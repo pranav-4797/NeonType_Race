@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonType Race</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;500;600&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 1 — LANDING / JOIN
+══════════════════════════════════════════════════ -->
+<div id="page-landing" class="page page-active">
+
+    <div class="landing-bg"></div>
+    <div class="landing-scanlines"></div>
+    <div class="landing-vignette"></div>
+
+    <!-- Hazard strips top -->
+    <div class="hazard-strip hazard-top"></div>
+
+    <div class="landing-content">
+
+        <!-- Left: branding -->
+        <div class="landing-left">
+            <div class="brand-eyebrow">✦ MULTIPLAYER TYPING RACE ✦</div>
+            <h1 class="brand-title">
+                <span class="brand-neon">NEON</span><span class="brand-white">TYPE</span>
+            </h1>
+            <p class="brand-sub">R &nbsp; A &nbsp; C &nbsp; E</p>
+            <p class="brand-desc">
+                Up to 4 players · Real-time · Peer-to-peer<br>
+                Race against friends with the same text,<br>
+                beat the clock, climb the leaderboard.
+            </p>
+
+            <div class="landing-features">
+                <div class="feat"><span class="feat-icon">⚡</span><span>Live WPM tracking</span></div>
+                <div class="feat"><span class="feat-icon">⏱️</span><span>Adaptive time limit</span></div>
+                <div class="feat"><span class="feat-icon">🏆</span><span>Real-time leaderboard</span></div>
+                <div class="feat"><span class="feat-icon">🚀</span><span>No account needed</span></div>
+            </div>
+        </div>
+
+        <!-- Right: join panel -->
+        <div class="landing-right">
+            <div class="join-panel">
+                <div class="join-panel-header">
+                    <div class="join-panel-title">ENTER THE RACE</div>
+                    <div class="join-panel-sub">Choose your path to glory</div>
+                </div>
+
+                <!-- Name input -->
+                <div class="form-group">
+                    <label class="form-label">YOUR RACER NAME</label>
+                    <input type="text" id="input-player-name" class="form-input" placeholder="Enter your name..." maxlength="16" autocomplete="off">
+                </div>
+
+                <!-- Car & color quick pick -->
+                <div class="form-group">
+                    <label class="form-label">PICK YOUR CAR</label>
+                    <div class="quick-car-row" id="quick-car-row"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">CAR COLOR</label>
+                    <div class="quick-colors" id="quick-colors"></div>
+                </div>
+
+                <div class="join-divider">
+                    <div class="jd-line"></div>
+                    <span>HOST OR JOIN</span>
+                    <div class="jd-line"></div>
+                </div>
+
+                <!-- Host -->
+                <button id="btn-host" class="join-btn join-btn-primary">
+                    <span class="jb-icon">🚀</span>
+                    <div class="jb-text">
+                        <strong>Host a Room</strong>
+                        <small>Create a new race for up to 4 players</small>
+                    </div>
+                </button>
+
+                <!-- Join -->
+                <div class="join-code-row">
+                    <input type="text" id="input-room-code" class="form-input code-input" placeholder="Room code (e.g. A3BX)" maxlength="4" autocomplete="off" spellcheck="false">
+                    <button id="btn-join" class="join-btn join-btn-secondary join-btn-sm">
+                        <span class="jb-icon">🔗</span> Join
+                    </button>
+                </div>
+
+                <p class="join-note">Room codes are 4 characters · Share with friends</p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Hazard strips bottom -->
+    <div class="hazard-strip hazard-bottom"></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════
+     PAGE 2 — GAME
+══════════════════════════════════════════════════ -->
+<div id="page-game" class="page">
+
+    <!-- Animated bg for game page -->
+    <div class="game-bg-scene">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid-lines"></div>
+    </div>
+
+    <!-- ── LOBBY VIEW ── -->
+    <div id="view-lobby" class="game-view active">
+        <div class="game-header">
+            <div class="game-logo">NEON<span>TYPE</span> RACE</div>
+            <button id="btn-leave" class="leave-btn">← Leave</button>
+        </div>
+
+        <div class="lobby-wrap">
+            <div class="lobby-room-badge">
+                <span class="lrb-label">ROOM CODE</span>
+                <span id="display-room-code" class="lrb-code">----</span>
+                <button id="btn-copy-code" class="copy-btn" title="Copy">📋</button>
+            </div>
+
+            <h2 id="lobby-status" class="lobby-status">Waiting for players...</h2>
+
+            <div class="lobby-players" id="lobby-players">
+                <!-- Slots rendered by JS -->
+            </div>
+
+            <div class="lobby-bottom">
+                <button id="btn-start-race" class="join-btn join-btn-primary hidden">
+                    🏁 &nbsp; Start Race
+                </button>
+                <p id="lobby-hint" class="lobby-hint">Waiting for at least 1 more player to join...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── RACE VIEW ── -->
+    <div id="view-race" class="game-view">
+
+        <!-- Countdown overlay -->
+        <div id="countdown-overlay" class="countdown-overlay hidden">
+            <div id="countdown-number" class="countdown-number">3</div>
+        </div>
+
+        <!-- HUD bar -->
+        <div class="race-hud">
+            <div class="hud-left">
+                <span class="hud-label">RACE</span>
+                <span id="hud-room" class="hud-room"></span>
+            </div>
+            <div class="hud-center">
+                <!-- Time limit clock -->
+                <div class="time-limit-wrap">
+                    <svg class="time-ring" viewBox="0 0 44 44">
+                        <circle class="time-ring-bg" cx="22" cy="22" r="18" />
+                        <circle id="time-ring-fill" class="time-ring-fill" cx="22" cy="22" r="18" />
+                    </svg>
+                    <span id="time-remaining" class="time-remaining">--</span>
+                </div>
+                <div class="time-label-wrap">
+                    <span class="time-label">TIME LEFT</span>
+                    <span id="time-total-label" class="time-total-label"></span>
+                </div>
+            </div>
+            <div class="hud-right">
+                <span class="hud-label">MY WPM</span>
+                <span id="hud-wpm" class="hud-wpm">0</span>
+            </div>
+        </div>
+
+        <!-- Tracks -->
+        <div class="race-tracks glass-panel">
+            <div id="tracks-container" class="tracks-container"></div>
+        </div>
+
+        <!-- Typing area -->
+        <div class="typing-area glass-panel">
+            <div id="text-display" class="text-display"></div>
+            <div class="typing-bottom">
+                <input type="text" id="typing-input" class="typing-input" disabled placeholder="Waiting for countdown..." autocomplete="off" spellcheck="false">
+                <div id="my-accuracy" class="my-accuracy">ACC: --%</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ── RESULT OVERLAY ── -->
+    <div id="result-overlay" class="result-overlay hidden">
+        <div class="result-modal glass-panel">
+            <div id="result-crown" class="result-crown">🏆</div>
+            <h2 id="result-title" class="result-title">You Won!</h2>
+            <p id="result-wpm" class="result-wpm"></p>
+            <p id="result-time" class="result-time-info"></p>
+
+            <div id="result-leaderboard" class="result-leaderboard"></div>
+
+            <div class="result-actions">
+                <button id="btn-play-again" class="join-btn join-btn-primary hidden">🔁 &nbsp;Play Again</button>
+                <button id="btn-quit" class="join-btn join-btn-secondary">← Back to Home</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
