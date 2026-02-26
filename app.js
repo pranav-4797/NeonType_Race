@@ -414,8 +414,8 @@ function showResult(rank, wpm, accuracy, timedOut) {
         const st = p.timedOut ? 'timeout' : 'finished', stTxt = p.timedOut ? 'Timed Out' : (ords[p.finishRank - 1] || p.finishRank + 'th');
         return `<div class="lb-row ${p.slotIndex === mySlotIndex ? 'lb-me' : ''}" style="--p-color:${p.color}">
             <span class="lb-rank">${ords[(p.finishRank || 4) - 1] || p.finishRank + 'th'}</span>
-            <span class="lb-car">${p.emoji}</span><span class="lb-name">${esc(p.name)}</span>
-            <span class="lb-wpm">${p.wpm} WPM</span><span class="lb-status ${st}">${stTxt}</span></div>`;
+            <span class="lb-car">${p.emoji}</span><span class="lb-name">${esc(p.name)} <span style="font-size: 0.75em; color: var(--muted); font-weight: normal; margin-left: 8px;">Acc: ${p.accuracy}%</span></span>
+            <span class="lb-wpm">${p.wpm} <span style="font-size:0.65em; color:var(--muted); font-weight:normal;">WPM</span></span><span class="lb-status ${st}">${stTxt}</span></div>`;
     }).join('');
     $('result-overlay').classList.remove('hidden');
     if (isHost) $('btn-play-again').classList.remove('hidden');
