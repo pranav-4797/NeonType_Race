@@ -939,60 +939,37 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: var(--bod
     display: grid;
     grid-template-columns: 64px 26px 1fr auto auto;
     align-items: center;
-    gap: 12px;
-    padding: 14px 18px;
-    background: rgba(255,255,255,0.05);
+    gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
     border: 1px solid var(--glass-border);
-    border-radius: 12px;
+    border-radius: 10px;
     text-align: left;
-    transition: transform 0.2s, box-shadow 0.2s;
-}
-.lb-row:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
 }
 .lb-row.lb-me {
     border-color: var(--p-color);
-    background: color-mix(in srgb, var(--p-color) 12%, transparent);
-    box-shadow: 0 0 15px color-mix(in srgb, var(--p-color) 20%, transparent);
+    background: color-mix(in srgb, var(--p-color) 7%, transparent);
 }
 .lb-rank {
     font-family: var(--hud);
-    font-size: 0.75rem;
-    font-weight: 700;
+    font-size: 0.58rem;
     color: var(--muted);
-    letter-spacing: 0.08em;
+    letter-spacing: 0.06em;
 }
-.lb-row.lb-me .lb-rank { color: var(--p-color); }
-.lb-car { font-size: 1.3rem; text-align: center; }
-.lb-name { 
-    font-size: 1.05rem; 
-    font-weight: 600;
-    color: var(--text); 
-    overflow: hidden; 
-    text-overflow: ellipsis; 
-    white-space: nowrap; 
-}
-.lb-wpm { 
-    font-family: var(--mono); 
-    font-size: 1.15rem; 
-    font-weight: 700;
-    color: var(--warn); 
-    text-shadow: 0 0 10px rgba(255,230,0,0.25);
-    white-space: nowrap; 
-}
+.lb-car { font-size: 1rem; text-align: center; }
+.lb-name { font-size: 0.82rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lb-wpm { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
 .lb-status {
     font-family: var(--hud);
-    font-size: 0.6rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    padding: 4px 10px;
+    font-size: 0.5rem;
+    letter-spacing: 0.07em;
+    padding: 2px 7px;
     border-radius: 100px;
     white-space: nowrap;
 }
-.lb-status.finished { background: rgba(0,255,136,0.15); color: var(--success); }
-.lb-status.timeout  { background: rgba(255,68,68,0.15); color: var(--error); }
-.lb-status.dnf      { background: rgba(255,255,255,0.08); color: var(--muted); }
+.lb-status.finished { background: rgba(0,255,136,0.1); color: var(--success); }
+.lb-status.timeout  { background: rgba(255,68,68,0.1); color: var(--error); }
+.lb-status.dnf      { background: rgba(255,255,255,0.05); color: var(--muted); }
 
 .result-actions {
     display: flex;
@@ -1021,4 +998,41 @@ html, body { width: 100%; height: 100%; overflow: hidden; font-family: var(--bod
     .lobby-players { grid-template-columns: 1fr 1fr; }
     .lb-row { grid-template-columns: 48px 22px 1fr auto; }
     .lb-status { display: none; }
+}
+
+/* ── Connection status bar ─────────────────────────────── */
+.lobby-status-bar {
+    font-family: var(--hud);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 20px;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+.status-ok {
+    color: var(--success);
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.2);
+}
+.status-info {
+    color: var(--primary);
+    background: rgba(0,238,255,0.08);
+    border: 1px solid rgba(0,238,255,0.2);
+}
+.status-connecting {
+    color: var(--warn);
+    background: rgba(255,230,0,0.08);
+    border: 1px solid rgba(255,230,0,0.25);
+    animation: pulse-text 1.2s ease-in-out infinite;
+}
+.status-error {
+    color: var(--error);
+    background: rgba(255,68,68,0.08);
+    border: 1px solid rgba(255,68,68,0.2);
+}
+@keyframes pulse-text {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.6; }
 }
