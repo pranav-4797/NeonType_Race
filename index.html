@@ -1,220 +1,780 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeonType Race</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;500;600&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeonType Race</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@400;500;600&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ── */
+:root{
+  --bg:#090a12;--glass:rgba(10,12,24,.82);--border:rgba(255,255,255,.07);
+  --primary:#00eeff;--red:#ff003c;--yellow:#ffe600;--green:#00ff88;
+  --warn:#ffaa00;--error:#ff4444;--text:#eef2ff;--muted:#50607a;
+  --hud:'Orbitron',sans-serif;--mono:'Fira Code',monospace;--body:'Space Grotesk',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--body);background:var(--bg);color:var(--text)}
+.hidden{display:none!important}
+
+/* ── Pages ── */
+.page{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;transform:translateX(100%);transition:transform .5s cubic-bezier(.76,0,.24,1)}
+.page-active{transform:translateX(0)}
+.page-exit{transform:translateX(-100%)}
+
+/* ── Landing ── */
+.landing-bg{position:fixed;inset:0;background:radial-gradient(ellipse at 20% 50%,rgba(0,238,255,.07),transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(112,0,255,.09),transparent 60%),radial-gradient(ellipse at 60% 80%,rgba(255,0,60,.06),transparent 60%),var(--bg);z-index:0}
+.hazard{position:fixed;left:0;right:0;height:6px;background:repeating-linear-gradient(90deg,var(--yellow) 0,var(--yellow) 20px,#1a1400 20px,#1a1400 40px);z-index:2;opacity:.7}
+.hazard-top{top:0}.hazard-bottom{bottom:0}
+.landing-content{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:100vh;gap:60px;padding:30px 40px}
+.landing-left{flex:1;max-width:480px}
+.eyebrow{font-family:var(--hud);font-size:.7rem;letter-spacing:.2em;color:var(--primary);margin-bottom:20px;opacity:.8}
+.brand-title{font-family:var(--hud);font-size:clamp(3rem,7vw,5.5rem);font-weight:900;line-height:.9;margin-bottom:8px}
+.brand-neon{color:var(--primary);text-shadow:0 0 30px rgba(0,238,255,.6),0 0 60px rgba(0,238,255,.3)}
+.brand-white{color:#fff}
+.brand-sub{font-family:var(--hud);font-size:1rem;letter-spacing:.5em;color:var(--muted);margin-bottom:24px}
+.brand-desc{color:var(--muted);line-height:1.7;font-size:.95rem;margin-bottom:28px}
+.feats{display:flex;flex-direction:column;gap:10px}
+.feat{display:flex;align-items:center;gap:10px;font-size:.9rem;color:var(--muted)}
+.feat-icon{font-size:1.1rem}
+
+.join-panel{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:24px;padding:32px;width:380px;flex-shrink:0}
+.jp-title{font-family:var(--hud);font-size:.75rem;letter-spacing:.2em;color:var(--primary);margin-bottom:4px}
+.jp-sub{font-size:.85rem;color:var(--muted);margin-bottom:24px}
+.form-label{display:block;font-family:var(--hud);font-size:.65rem;letter-spacing:.15em;color:var(--muted);margin-bottom:8px}
+.form-input{width:100%;background:rgba(0,0,0,.3);border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-family:var(--body);font-size:.95rem;outline:none;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,238,255,.08)}
+.form-group{margin-bottom:16px}
+
+.qcar-row{display:flex;gap:8px;flex-wrap:wrap}
+.qcar{flex:1;min-width:70px;background:rgba(0,0,0,.25);border:1.5px solid var(--border);border-radius:10px;padding:8px 6px 4px;cursor:pointer;text-align:center;transition:.2s}
+.qcar:hover{border-color:rgba(0,238,255,.4)}
+.qcar.selected{border-color:var(--primary);background:rgba(0,238,255,.06)}
+.qcar svg{width:100%;height:auto;display:block;margin-bottom:2px}
+.qcar-name{font-size:.6rem;color:var(--muted);font-family:var(--hud);letter-spacing:.05em}
+.qcolors{display:flex;gap:6px;flex-wrap:wrap}
+.qcolor{width:24px;height:24px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:.15s;flex-shrink:0}
+.qcolor:hover{transform:scale(1.15)}
+.qcolor.selected{border-color:#fff;transform:scale(1.2)}
+
+.divider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--muted);font-size:.75rem;font-family:var(--hud);letter-spacing:.15em}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+
+.jbtn{width:100%;border:none;border-radius:12px;padding:14px 18px;cursor:pointer;font-family:var(--body);font-size:.95rem;font-weight:600;display:flex;align-items:center;gap:12px;transition:.2s;margin-bottom:10px}
+.jbtn:disabled{opacity:.5;pointer-events:none}
+.jbtn-primary{background:linear-gradient(135deg,var(--primary),#00aaff);color:#000;box-shadow:0 0 20px rgba(0,238,255,.25)}
+.jbtn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 30px rgba(0,238,255,.4)}
+.jbtn-secondary{background:rgba(255,255,255,.05);color:var(--text);border:1.5px solid var(--border)}
+.jbtn-secondary:hover{background:rgba(255,255,255,.09);transform:translateY(-1px)}
+.jbtn-icon{font-size:1.1rem}
+.jbtn-text strong{display:block;font-size:.95rem}
+.jbtn-text small{font-size:.75rem;opacity:.7;font-weight:400}
+.code-row{display:flex;gap:8px}
+.code-row .form-input{flex:1;text-transform:uppercase;letter-spacing:.2em;font-family:var(--hud);text-align:center;font-size:1.1rem}
+.join-note{font-size:.75rem;color:var(--muted);text-align:center;margin-top:6px}
+
+/* ── Game page ── */
+.game-bg{position:fixed;inset:0;overflow:hidden;z-index:0}
+.orb{position:absolute;border-radius:50%;filter:blur(100px);opacity:.4}
+.orb1{width:400px;height:400px;background:var(--primary);top:-100px;left:-100px;animation:drift 18s ease-in-out infinite alternate}
+.orb2{width:500px;height:500px;background:#7000ff;bottom:-150px;right:-100px;animation:drift 22s ease-in-out infinite alternate-reverse}
+.orb3{width:300px;height:300px;background:var(--red);top:40%;left:40%;animation:drift 15s ease-in-out infinite alternate}
+@keyframes drift{to{transform:translate(40px,40px) scale(1.15)}}
+.grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,238,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,238,255,.03) 1px,transparent 1px);background-size:40px 40px}
+
+.game-view{display:none;position:relative;z-index:1;flex-direction:column;min-height:100vh;padding:16px}
+.game-view.active{display:flex}
+
+.glass{background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:16px}
+
+.ghdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;margin-bottom:16px}
+.g-logo{font-family:var(--hud);font-size:1rem;font-weight:900;color:#fff}
+.g-logo span{color:var(--primary)}
+.leave-btn{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--muted);cursor:pointer;font-family:var(--body);font-size:.85rem;transition:.2s}
+.leave-btn:hover{color:var(--text);background:rgba(255,255,255,.1)}
+
+/* Lobby */
+.lobby-wrap{max-width:760px;margin:0 auto;width:100%;padding:0 8px}
+.room-badge{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:20px}
+.rb-label{font-family:var(--hud);font-size:.65rem;letter-spacing:.2em;color:var(--muted)}
+.rb-code{font-family:var(--hud);font-size:2rem;font-weight:900;color:var(--primary);text-shadow:0 0 20px rgba(0,238,255,.5);letter-spacing:.2em}
+.copy-btn{background:none;border:none;font-size:1.2rem;cursor:pointer;opacity:.6;transition:.2s;padding:4px}
+.copy-btn:hover{opacity:1;transform:scale(1.15)}
+
+.status-bar{font-family:var(--hud);font-size:.8rem;letter-spacing:.1em;text-align:center;padding:8px 20px;border-radius:20px;margin-bottom:20px;display:inline-block;align-self:center}
+.s-ok{color:var(--green);background:rgba(0,255,136,.08);border:1px solid rgba(0,255,136,.2)}
+.s-connecting{color:var(--warn);background:rgba(255,170,0,.08);border:1px solid rgba(255,170,0,.25);animation:pulse .9s ease-in-out infinite}
+.s-error{color:var(--error);background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.2)}
+@keyframes pulse{50%{opacity:.5}}
+
+.lp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.lp-slot{background:rgba(0,0,0,.2);border:1.5px solid var(--border);border-radius:14px;padding:18px 10px 14px;text-align:center;transition:.3s}
+.lp-slot.filled{border-color:var(--p-color,var(--primary));box-shadow:0 0 14px rgba(0,238,255,.08)}
+.lp-avatar{height:52px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
+.lp-avatar svg{width:64px;height:auto}
+.lp-name{font-size:.85rem;font-weight:600;color:var(--text);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lp-badge{font-family:var(--hud);font-size:.55rem;letter-spacing:.1em;padding:3px 8px;border-radius:20px}
+.badge-host{background:rgba(0,238,255,.12);color:var(--primary);border:1px solid rgba(0,238,255,.3)}
+.badge-joined{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.25)}
+.badge-waiting{background:rgba(80,96,122,.15);color:var(--muted);border:1px solid rgba(80,96,122,.2)}
+
+.lobby-bottom{text-align:center}
+.lobby-hint{font-size:.85rem;color:var(--muted);margin-top:10px}
+
+/* Race HUD */
+.race-hud{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;margin-bottom:12px}
+.hud-seg{display:flex;flex-direction:column;align-items:center}
+.hud-label{font-family:var(--hud);font-size:.55rem;letter-spacing:.2em;color:var(--muted)}
+.hud-room{font-family:var(--hud);font-size:1rem;color:var(--primary);font-weight:700;letter-spacing:.15em}
+.hud-wpm{font-family:var(--hud);font-size:1.6rem;font-weight:900;color:var(--green)}
+
+.time-wrap{display:flex;align-items:center;gap:10px}
+.time-ring{width:44px;height:44px;transform:rotate(-90deg)}
+.time-ring-bg{fill:none;stroke:rgba(255,255,255,.08);stroke-width:3}
+.time-ring-fill{fill:none;stroke:var(--primary);stroke-width:3;stroke-linecap:round;stroke-dasharray:113.1;stroke-dashoffset:0;transition:stroke-dashoffset .9s linear,stroke .3s}
+.time-ring-fill.warn{stroke:var(--warn)}
+.time-ring-fill.danger{stroke:var(--error)}
+.time-num{font-family:var(--hud);font-size:.95rem;font-weight:700;min-width:36px}
+.time-total{font-family:var(--hud);font-size:.6rem;color:var(--muted);margin-top:2px}
+
+/* Tracks */
+.race-tracks{padding:14px 18px;margin-bottom:12px}
+.racer-row{margin-bottom:12px}
+.racer-row:last-child{margin-bottom:0}
+.racer-row.finished .track-fill{filter:brightness(.6)}
+.racer-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.racer-name{font-size:.85rem;font-weight:600}
+.racer-name em{color:var(--primary);font-style:normal;font-size:.8rem}
+.racer-right{display:flex;align-items:center;gap:10px}
+.racer-wpm{font-family:var(--hud);font-size:.75rem;color:var(--muted)}
+.racer-finish{font-family:var(--hud);font-size:.7rem;color:var(--green);background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2);padding:2px 8px;border-radius:10px}
+.track-bar{height:22px;background:rgba(0,0,0,.4);border-radius:11px;overflow:hidden;border:1px solid var(--border);position:relative}
+.track-fill{height:100%;min-width:24px;background:linear-gradient(90deg,rgba(0,0,0,0),var(--p-color,var(--primary)));border-radius:11px;transition:width .18s linear;position:relative;display:flex;align-items:center;justify-content:flex-end}
+.track-car{font-size:1rem;margin-right:2px;filter:drop-shadow(0 0 4px rgba(255,255,255,.4))}
+
+/* Typing area */
+.typing-area{padding:18px;margin-bottom:8px}
+.text-display{font-family:var(--mono);font-size:1.25rem;line-height:1.7;color:var(--muted);background:rgba(0,0,0,.2);padding:20px;border-radius:12px;margin-bottom:12px;border:1px solid var(--border);user-select:none;max-height:160px;overflow-y:auto}
+.text-display span{transition:color .08s}
+.text-display .correct{color:var(--green);text-shadow:0 0 8px rgba(0,255,136,.25)}
+.text-display .incorrect{color:var(--error);background:rgba(255,68,68,.12);border-radius:3px}
+.text-display .current{border-bottom:2px solid var(--primary);animation:blink 1s step-end infinite;color:var(--text)}
+@keyframes blink{50%{border-color:transparent}}
+.typing-bottom{display:flex;align-items:center;gap:10px}
+.typing-input{flex:1;background:rgba(0,0,0,.35);border:1.5px solid var(--border);border-radius:10px;padding:12px 16px;color:var(--text);font-family:var(--mono);font-size:1rem;outline:none;transition:border-color .2s}
+.typing-input:focus{border-color:var(--primary)}
+.typing-input:disabled{opacity:.45;cursor:not-allowed}
+.acc-badge{font-family:var(--hud);font-size:.7rem;color:var(--muted);white-space:nowrap}
+
+/* Countdown */
+.cd-overlay{position:fixed;inset:0;background:rgba(9,10,18,.85);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:50}
+.cd-num{font-family:var(--hud);font-size:8rem;font-weight:900;color:var(--primary);text-shadow:0 0 60px rgba(0,238,255,.7)}
+.cd-num.pop{animation:pop .3s cubic-bezier(.175,.885,.32,1.275)}
+@keyframes pop{0%{transform:scale(1.5);opacity:.5}100%{transform:scale(1);opacity:1}}
+
+/* Result */
+.result-overlay{position:fixed;inset:0;background:rgba(9,10,18,.9);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center;z-index:40}
+.result-modal{padding:36px;max-width:520px;width:90%;text-align:center}
+.result-crown{font-size:3rem;margin-bottom:8px}
+.result-title{font-family:var(--hud);font-size:1.8rem;font-weight:900;margin-bottom:6px}
+.result-wpm{font-size:1.1rem;color:var(--muted);margin-bottom:4px}
+.result-time{font-size:.85rem;color:var(--muted);margin-bottom:18px}
+.lb-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:10px;margin-bottom:6px;background:rgba(0,0,0,.2);border:1px solid var(--border);text-align:left}
+.lb-row.lb-me{border-color:var(--p-color,var(--primary));background:rgba(0,238,255,.04)}
+.lb-rank{font-family:var(--hud);font-size:.7rem;width:36px;color:var(--muted)}
+.lb-car{font-size:1rem}
+.lb-name{flex:1;font-size:.9rem;font-weight:600}
+.lb-wpm{font-family:var(--hud);font-size:.75rem;color:var(--primary)}
+.lb-status{font-family:var(--hud);font-size:.6rem;padding:2px 8px;border-radius:10px}
+.lb-status.finished{color:var(--green);background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2)}
+.lb-status.timeout{color:var(--warn);background:rgba(255,170,0,.1);border:1px solid rgba(255,170,0,.2)}
+.result-actions{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+
+@media(max-width:700px){
+  .landing-content{flex-direction:column;padding:40px 20px}
+  .join-panel{width:100%}
+  .lp-grid{grid-template-columns:repeat(2,1fr)}
+  .brand-title{font-size:3rem}
+}
+</style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════
-     PAGE 1 — LANDING / JOIN
-══════════════════════════════════════════════════ -->
+<!-- PAGE 1: LANDING -->
 <div id="page-landing" class="page page-active">
-
-    <div class="landing-bg"></div>
-    <div class="landing-scanlines"></div>
-    <div class="landing-vignette"></div>
-
-    <!-- Hazard strips top -->
-    <div class="hazard-strip hazard-top"></div>
-
-    <div class="landing-content">
-
-        <!-- Left: branding -->
-        <div class="landing-left">
-            <div class="brand-eyebrow">✦ MULTIPLAYER TYPING RACE ✦</div>
-            <h1 class="brand-title">
-                <span class="brand-neon">NEON</span><span class="brand-white">TYPE</span>
-            </h1>
-            <p class="brand-sub">R &nbsp; A &nbsp; C &nbsp; E</p>
-            <p class="brand-desc">
-                Up to 4 players · Real-time · Peer-to-peer<br>
-                Race against friends with the same text,<br>
-                beat the clock, climb the leaderboard.
-            </p>
-
-            <div class="landing-features">
-                <div class="feat"><span class="feat-icon">⚡</span><span>Live WPM tracking</span></div>
-                <div class="feat"><span class="feat-icon">⏱️</span><span>Adaptive time limit</span></div>
-                <div class="feat"><span class="feat-icon">🏆</span><span>Real-time leaderboard</span></div>
-                <div class="feat"><span class="feat-icon">🚀</span><span>No account needed</span></div>
-            </div>
-        </div>
-
-        <!-- Right: join panel -->
-        <div class="landing-right">
-            <div class="join-panel">
-                <div class="join-panel-header">
-                    <div class="join-panel-title">ENTER THE RACE</div>
-                    <div class="join-panel-sub">Choose your path to glory</div>
-                </div>
-
-                <!-- Name input -->
-                <div class="form-group">
-                    <label class="form-label">YOUR RACER NAME</label>
-                    <input type="text" id="input-player-name" class="form-input" placeholder="Enter your name..." maxlength="16" autocomplete="off">
-                </div>
-
-                <!-- Car & color quick pick -->
-                <div class="form-group">
-                    <label class="form-label">PICK YOUR CAR</label>
-                    <div class="quick-car-row" id="quick-car-row"></div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">CAR COLOR</label>
-                    <div class="quick-colors" id="quick-colors"></div>
-                </div>
-
-                <div class="join-divider">
-                    <div class="jd-line"></div>
-                    <span>HOST OR JOIN</span>
-                    <div class="jd-line"></div>
-                </div>
-
-                <!-- Host -->
-                <button id="btn-host" class="join-btn join-btn-primary">
-                    <span class="jb-icon">🚀</span>
-                    <div class="jb-text">
-                        <strong>Host a Room</strong>
-                        <small>Create a new race for up to 4 players</small>
-                    </div>
-                </button>
-
-                <!-- Join -->
-                <div class="join-code-row">
-                    <input type="text" id="input-room-code" class="form-input code-input" placeholder="Room code (e.g. A3BX)" maxlength="4" autocomplete="off" spellcheck="false">
-                    <button id="btn-join" class="join-btn join-btn-secondary join-btn-sm">
-                        <span class="jb-icon">🔗</span> Join
-                    </button>
-                </div>
-
-                <p class="join-note">Room codes are 4 characters · Share with friends</p>
-            </div>
-        </div>
-
+  <div class="landing-bg"></div>
+  <div class="hazard hazard-top"></div>
+  <div class="landing-content">
+    <div class="landing-left">
+      <div class="eyebrow">✦ MULTIPLAYER TYPING RACE ✦</div>
+      <h1 class="brand-title"><span class="brand-neon">NEON</span><span class="brand-white">TYPE</span></h1>
+      <p class="brand-sub">R &nbsp; A &nbsp; C &nbsp; E</p>
+      <p class="brand-desc">Up to 4 players · Real-time · Works on any network<br>Race your friends on the same text. Fastest fingers win.</p>
+      <div class="feats">
+        <div class="feat"><span class="feat-icon">⚡</span><span>Live WPM tracking</span></div>
+        <div class="feat"><span class="feat-icon">⏱️</span><span>Adaptive time limit</span></div>
+        <div class="feat"><span class="feat-icon">🏆</span><span>Real-time leaderboard</span></div>
+        <div class="feat"><span class="feat-icon">🌐</span><span>Works across all networks</span></div>
+      </div>
     </div>
-
-    <!-- Hazard strips bottom -->
-    <div class="hazard-strip hazard-bottom"></div>
+    <div class="join-panel">
+      <div class="jp-title">ENTER THE RACE</div>
+      <div class="jp-sub">Choose your path to glory</div>
+      <div class="form-group">
+        <label class="form-label">YOUR RACER NAME</label>
+        <input type="text" id="inp-name" class="form-input" placeholder="Enter your name..." maxlength="16" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label class="form-label">PICK YOUR CAR</label>
+        <div class="qcar-row" id="car-row"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">CAR COLOR</label>
+        <div class="qcolors" id="color-row"></div>
+      </div>
+      <div class="divider">HOST OR JOIN</div>
+      <button id="btn-host" class="jbtn jbtn-primary">
+        <span class="jbtn-icon">🚀</span>
+        <div class="jbtn-text"><strong>Host a Room</strong><small>Create a new race for up to 4 players</small></div>
+      </button>
+      <div class="code-row">
+        <input type="text" id="inp-code" class="form-input" placeholder="Room code" maxlength="4" autocomplete="off" spellcheck="false">
+        <button id="btn-join" class="jbtn jbtn-secondary" style="margin:0;width:auto;padding:14px 20px">
+          <span class="jbtn-icon">🔗</span> Join
+        </button>
+      </div>
+      <p class="join-note">Room codes are 4 letters · Share with friends</p>
+    </div>
+  </div>
+  <div class="hazard hazard-bottom"></div>
 </div>
 
-
-<!-- ══════════════════════════════════════════════════
-     PAGE 2 — GAME
-══════════════════════════════════════════════════ -->
+<!-- PAGE 2: GAME -->
 <div id="page-game" class="page">
+  <div class="game-bg">
+    <div class="orb orb1"></div><div class="orb orb2"></div><div class="orb orb3"></div>
+    <div class="grid"></div>
+  </div>
 
-    <!-- Animated bg for game page -->
-    <div class="game-bg-scene">
-        <div class="orb orb-1"></div>
-        <div class="orb orb-2"></div>
-        <div class="orb orb-3"></div>
-        <div class="grid-lines"></div>
+  <!-- LOBBY VIEW -->
+  <div id="view-lobby" class="game-view active">
+    <div class="ghdr glass">
+      <div class="g-logo">NEON<span>TYPE</span> RACE</div>
+      <button id="btn-leave" class="leave-btn">← Leave</button>
     </div>
-
-    <!-- ── LOBBY VIEW ── -->
-    <div id="view-lobby" class="game-view active">
-        <div class="game-header">
-            <div class="game-logo">NEON<span>TYPE</span> RACE</div>
-            <button id="btn-leave" class="leave-btn">← Leave</button>
-        </div>
-
-        <div class="lobby-wrap">
-            <div class="lobby-room-badge">
-                <span class="lrb-label">ROOM CODE</span>
-                <span id="display-room-code" class="lrb-code">----</span>
-                <button id="btn-copy-code" class="copy-btn" title="Copy">📋</button>
-            </div>
-
-            <h2 id="lobby-status" class="lobby-status">Waiting for players...</h2>
-
-            <div class="lobby-players" id="lobby-players">
-                <!-- Slots rendered by JS -->
-            </div>
-
-            <div class="lobby-bottom">
-                <button id="btn-start-race" class="join-btn join-btn-primary hidden">
-                    🏁 &nbsp; Start Race
-                </button>
-                <p id="lobby-hint" class="lobby-hint">Waiting for at least 1 more player to join...</p>
-            </div>
-        </div>
+    <div class="lobby-wrap">
+      <div class="room-badge">
+        <span class="rb-label">ROOM CODE</span>
+        <span id="disp-code" class="rb-code">----</span>
+        <button id="btn-copy" class="copy-btn" title="Copy code">📋</button>
+      </div>
+      <div id="status-bar" class="status-bar s-connecting">Connecting...</div>
+      <div class="lp-grid" id="lp-grid"></div>
+      <div class="lobby-bottom">
+        <button id="btn-start" class="jbtn jbtn-primary hidden" style="max-width:240px;margin:0 auto">🏁 &nbsp;Start Race</button>
+        <p id="lobby-hint" class="lobby-hint">Waiting for at least 1 more player...</p>
+      </div>
     </div>
+  </div>
 
-    <!-- ── RACE VIEW ── -->
-    <div id="view-race" class="game-view">
-
-        <!-- Countdown overlay -->
-        <div id="countdown-overlay" class="countdown-overlay hidden">
-            <div id="countdown-number" class="countdown-number">3</div>
-        </div>
-
-        <!-- HUD bar -->
-        <div class="race-hud">
-            <div class="hud-left">
-                <span class="hud-label">RACE</span>
-                <span id="hud-room" class="hud-room"></span>
-            </div>
-            <div class="hud-center">
-                <!-- Time limit clock -->
-                <div class="time-limit-wrap">
-                    <svg class="time-ring" viewBox="0 0 44 44">
-                        <circle class="time-ring-bg" cx="22" cy="22" r="18" />
-                        <circle id="time-ring-fill" class="time-ring-fill" cx="22" cy="22" r="18" />
-                    </svg>
-                    <span id="time-remaining" class="time-remaining">--</span>
-                </div>
-                <div class="time-label-wrap">
-                    <span class="time-label">TIME LEFT</span>
-                    <span id="time-total-label" class="time-total-label"></span>
-                </div>
-            </div>
-            <div class="hud-right">
-                <span class="hud-label">MY WPM</span>
-                <span id="hud-wpm" class="hud-wpm">0</span>
-            </div>
-        </div>
-
-        <!-- Tracks -->
-        <div class="race-tracks glass-panel">
-            <div id="tracks-container" class="tracks-container"></div>
-        </div>
-
-        <!-- Typing area -->
-        <div class="typing-area glass-panel">
-            <div id="text-display" class="text-display"></div>
-            <div class="typing-bottom">
-                <input type="text" id="typing-input" class="typing-input" disabled placeholder="Waiting for countdown..." autocomplete="off" spellcheck="false">
-                <div id="my-accuracy" class="my-accuracy">ACC: --%</div>
-            </div>
-        </div>
-
+  <!-- RACE VIEW -->
+  <div id="view-race" class="game-view">
+    <div id="cd-overlay" class="cd-overlay hidden">
+      <div id="cd-num" class="cd-num">3</div>
     </div>
-
-    <!-- ── RESULT OVERLAY ── -->
-    <div id="result-overlay" class="result-overlay hidden">
-        <div class="result-modal glass-panel">
-            <div id="result-crown" class="result-crown">🏆</div>
-            <h2 id="result-title" class="result-title">You Won!</h2>
-            <p id="result-wpm" class="result-wpm"></p>
-            <p id="result-time" class="result-time-info"></p>
-
-            <div id="result-leaderboard" class="result-leaderboard"></div>
-
-            <div class="result-actions">
-                <button id="btn-play-again" class="join-btn join-btn-primary hidden">🔁 &nbsp;Play Again</button>
-                <button id="btn-quit" class="join-btn join-btn-secondary">← Back to Home</button>
-            </div>
-        </div>
+    <div class="race-hud glass">
+      <div class="hud-seg"><span class="hud-label">ROOM</span><span id="hud-room" class="hud-room">----</span></div>
+      <div class="time-wrap">
+        <svg class="time-ring" viewBox="0 0 44 44">
+          <circle class="time-ring-bg" cx="22" cy="22" r="18"/>
+          <circle id="ring-fill" class="time-ring-fill" cx="22" cy="22" r="18"/>
+        </svg>
+        <div><div id="time-num" class="time-num">--</div><div id="time-tot" class="time-total"></div></div>
+      </div>
+      <div class="hud-seg"><span class="hud-label">MY WPM</span><span id="hud-wpm" class="hud-wpm">0</span></div>
     </div>
+    <div class="race-tracks glass"><div id="tracks" class="tracks-container"></div></div>
+    <div class="typing-area glass">
+      <div id="text-disp" class="text-display"></div>
+      <div class="typing-bottom">
+        <input type="text" id="type-input" class="typing-input" disabled placeholder="Waiting..." autocomplete="off" spellcheck="false">
+        <div id="acc-disp" class="acc-badge">ACC: --%</div>
+      </div>
+    </div>
+  </div>
 
+  <!-- RESULT OVERLAY -->
+  <div id="result-overlay" class="result-overlay hidden">
+    <div class="result-modal glass">
+      <div id="res-crown" class="result-crown">🏆</div>
+      <h2 id="res-title" class="result-title"></h2>
+      <p id="res-wpm" class="result-wpm"></p>
+      <p id="res-time" class="result-time"></p>
+      <div id="res-lb" class="result-leaderboard"></div>
+      <div class="result-actions">
+        <button id="btn-again" class="jbtn jbtn-primary hidden" style="width:auto">🔁 Play Again</button>
+        <button id="btn-quit" class="jbtn jbtn-secondary" style="width:auto">← Home</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-<script src="app.js"></script>
+<script>
+// ════════════════════════════════════════════════════════════════
+//  NeonType Race — WebSocket Relay via Ably (free tier)
+//  Uses Ably's free pub/sub — works on ALL networks, zero config
+//  No PeerJS, no WebRTC, no TURN servers needed
+// ════════════════════════════════════════════════════════════════
+
+// ── CONFIG ───────────────────────────────────────────────────────
+// Using Ably's free sandbox key for demo
+// For production: get your own free key at ably.com (no credit card)
+const ABLY_KEY = 'xVLyHw.DEd8AA:ThIH9t0f2FGEEi6p5kZOI6ZoNLcM1BatC0SiqKJ6hQQ';
+
+const MAX_P    = 4;
+const IDEAL    = 60; // wpm baseline
+const TFACTOR  = 1.5;
+const CD_SECS  = 3;
+
+// ── Texts ────────────────────────────────────────────────────────
+const TEXTS = [
+  'The city never sleeps. Beneath the flickering neon canopy, vendors hawk steaming bowls of ramen while drones weave between skyscrapers like silver fish through a glass sea. Data cables run under every surface, carrying the dreams of ten million connected souls. To live here is to exist in two worlds at once: the physical crush of bodies and concrete, and the invisible digital realm layered over everything like a second sky.',
+  'Rain has a way of erasing the boundaries between things. Puddles reflect neon signs in shattered fragments, making the wet street look like a mosaic of broken light. Pedestrians become silhouettes with glowing edges, their umbrellas like dark mushrooms pushing through a luminous underworld. The rhythm of rain on pavement is the city heartbeat, steady and relentless, punctuated by the hiss of tires and distant thunder rolling between towers.',
+  'Typing is a skill that rewards patience above all else. The fingers that move fastest are rarely the ones that started fastest. They are the ones that built speed slowly, through thousands of hours of careful repetition. Every character is a small decision about which finger and which motion to use. Speed emerges from eliminating hesitation, and hesitation fades when the body knows the keyboard so well that thought and motion become the same event.',
+  'Space is not empty. Between visible stars, threads of gas and magnetic fields connect everything in a vast invisible web. Galaxies pull on each other across distances too great to comprehend, their influence travelling at the speed of gravity itself. Black holes anchor the centres of almost every galaxy we have studied, spinning like cosmic engines. Light that left distant stars before Earth formed is only now reaching our telescopes.',
+  'Networks are built from trust, the quiet agreement between machines that data passing between them is worth protecting and delivering intact. Every packet carries a tiny flag saying it came from somewhere real and is going somewhere real. The engineers who designed these protocols never imagined the volume that would one day flow through their inventions. Yet the architecture holds, built on redundancy, error correction, and the assumption that every message must get through.',
+  'Mountains teach humility in a way that nothing else can. They are indifferent to schedules and ambitions, to the urgency that drives human beings through their daily lives. A storm on a high ridge waits for no one, and the climber who argues with the weather always loses. What mountains offer is a different clarity, a sense of scale that persists long after descent. Problems that seemed overwhelming at sea level shrink against ridgelines that have stood for millions of years.',
+];
+
+// ── Cars ─────────────────────────────────────────────────────────
+function rgb(h){h=h.replace('#','');if(h.length===3)h=h.split('').map(x=>x+x).join('');return{r:parseInt(h.slice(0,2),16),g:parseInt(h.slice(2,4),16),b:parseInt(h.slice(4,6),16)};}
+function dk(h,a){const{r,g,b}=rgb(h),f=1-a;return`rgb(${Math.round(r*f)},${Math.round(g*f)},${Math.round(b*f)})`;}
+function lt(h,a){const{r,g,b}=rgb(h);return`rgb(${Math.round(r+(255-r)*a)},${Math.round(g+(255-g)*a)},${Math.round(b+(255-b)*a)})`;}
+
+const CARS=[
+  {id:'beetle',n:'Beetle',s:c=>`<svg viewBox="0 0 100 44"><ellipse cx="50" cy="30" rx="43" ry="12" fill="${dk(c,.3)}"/><path d="M16 30 Q18 13 50 11 Q82 13 84 30Z" fill="${c}"/><rect x="13" y="27" width="74" height="10" rx="5" fill="${dk(c,.18)}"/><ellipse cx="27" cy="37" rx="10" ry="6" fill="#1a1a1a"/><ellipse cx="27" cy="37" rx="6" ry="4" fill="#444"/><ellipse cx="73" cy="37" rx="10" ry="6" fill="#1a1a1a"/><ellipse cx="73" cy="37" rx="6" ry="4" fill="#444"/><rect x="34" y="16" width="32" height="12" rx="3" fill="rgba(180,230,255,.5)"/></svg>`},
+  {id:'sedan', n:'Sedan', s:c=>`<svg viewBox="0 0 100 44"><rect x="8" y="26" width="84" height="12" rx="4" fill="${dk(c,.22)}"/><path d="M20 26 L26 14 L74 14 L80 26Z" fill="${c}"/><rect x="27" y="15" width="46" height="10" rx="2" fill="rgba(180,230,255,.5)"/><ellipse cx="25" cy="38" rx="9" ry="6" fill="#1a1a1a"/><ellipse cx="25" cy="38" rx="5" ry="3.5" fill="#444"/><ellipse cx="75" cy="38" rx="9" ry="6" fill="#1a1a1a"/><ellipse cx="75" cy="38" rx="5" ry="3.5" fill="#444"/><rect x="10" y="25" width="14" height="7" rx="2" fill="${lt(c,.3)}"/><rect x="76" y="25" width="14" height="7" rx="2" fill="#cc9900"/></svg>`},
+  {id:'sports',n:'Sports',s:c=>`<svg viewBox="0 0 100 44"><rect x="6" y="26" width="88" height="11" rx="3" fill="${dk(c,.28)}"/><path d="M13 26 L21 15 L68 13 L87 26Z" fill="${c}"/><rect x="23" y="14" width="40" height="10" rx="2" fill="rgba(180,230,255,.55)"/><ellipse cx="22" cy="37" rx="9" ry="6" fill="#1a1a1a"/><ellipse cx="22" cy="37" rx="5" ry="3.5" fill="#444"/><ellipse cx="78" cy="37" rx="9" ry="6" fill="#1a1a1a"/><ellipse cx="78" cy="37" rx="5" ry="3.5" fill="#444"/><rect x="7" y="24" width="16" height="7" rx="2" fill="${lt(c,.3)}"/><rect x="77" y="24" width="16" height="7" rx="2" fill="#cc9900"/></svg>`},
+  {id:'truck', n:'Truck', s:c=>`<svg viewBox="0 0 100 44"><rect x="4" y="20" width="92" height="18" rx="4" fill="${dk(c,.2)}"/><rect x="4" y="20" width="38" height="18" rx="4" fill="${c}"/><rect x="8" y="22" width="28" height="12" rx="2" fill="rgba(180,230,255,.45)"/><ellipse cx="20" cy="38" rx="9" ry="6" fill="#1a1a1a"/><ellipse cx="20" cy="38" rx="5" ry="3.5" fill="#444"/><ellipse cx="80" cy="38" rx="9" ry="6" fill="#1a1a1a"/><ellipse cx="80" cy="38" rx="5" ry="3.5" fill="#444"/><rect x="5" y="19" width="16" height="8" rx="2" fill="${lt(c,.3)}"/></svg>`},
+];
+const P_COLORS=['#00eeff','#ff003c','#ffe600','#00ff88'];
+const P_EMOJIS=['🏎️','🚙','🚕','🚗'];
+const Q_COLORS=['#00eeff','#ff003c','#ffe600','#00ff88','#7000ff','#ff6600','#ffffff','#ff69b4','#39ff14','#ff00ff','#00ccff','#ff4500'];
+
+// ── Profile ───────────────────────────────────────────────────────
+let prof={name:'Racer',carId:'beetle',color:'#00eeff'};
+try{Object.assign(prof,JSON.parse(localStorage.getItem('ntr_prof')||'{}'));}catch(e){}
+function saveProf(){try{localStorage.setItem('ntr_prof',JSON.stringify(prof));}catch(e){}}
+
+// ── State ─────────────────────────────────────────────────────────
+let ably=null,ch=null,myId=null;
+let isHost=false,room='',mySlot=0;
+let players=[],gameText='',tLimit=0,t0=null;
+let rTimer=null,cdTimer=null,dotTimer=null,finCount=0;
+
+// ── Utils ─────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function limit(txt){return Math.ceil(txt.trim().split(/\s+/).length/IDEAL*60*TFACTOR);}
+function fmt(s){s=Math.max(0,Math.floor(s));return Math.floor(s/60)>0?`${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`:`${s}s`;}
+function mkCode(){const a='abcdefghjkmnpqrstuvwxyz';let c='';for(let i=0;i<4;i++)c+=a[Math.floor(Math.random()*a.length)];return c;}
+function uid(){return Math.random().toString(36).slice(2,10);}
+function carSvg(id,col){return(CARS.find(c=>c.id===id)||CARS[0]).s(col||'#00eeff');}
+
+// ── Pages / views ─────────────────────────────────────────────────
+function gotoGame()   {$('page-landing').classList.add('page-exit');   $('page-game').classList.add('page-active');}
+function gotoLanding(){$('page-landing').classList.remove('page-exit');$('page-game').classList.remove('page-active');}
+function showView(v)  {document.querySelectorAll('.game-view').forEach(e=>e.classList.remove('active'));$('view-'+v).classList.add('active');}
+
+function setStatus(msg,cls='s-connecting'){
+  clearInterval(dotTimer);
+  const el=$('status-bar');el.className='status-bar '+cls;
+  if(cls==='s-connecting'){
+    let d=0;el.textContent=msg;
+    dotTimer=setInterval(()=>{d=(d+1)%4;el.textContent=msg+'.'.repeat(d);},500);
+  }else el.textContent=msg;
+}
+
+// ── Landing UI ────────────────────────────────────────────────────
+function initLanding(){
+  $('inp-name').value=prof.name;
+  $('inp-name').addEventListener('input',function(){prof.name=this.value.trim()||'Racer';saveProf();});
+  buildCars();buildColors();
+}
+function buildCars(){
+  const r=$('car-row');r.innerHTML='';
+  CARS.forEach(car=>{
+    const d=document.createElement('div');
+    d.className='qcar'+(car.id===prof.carId?' selected':'');
+    d.innerHTML=car.s(prof.color)+`<div class="qcar-name">${car.n}</div>`;
+    d.onclick=()=>{prof.carId=car.id;saveProf();buildCars();};
+    r.appendChild(d);
+  });
+}
+function buildColors(){
+  const r=$('color-row');r.innerHTML='';
+  Q_COLORS.forEach(col=>{
+    const s=document.createElement('div');
+    s.className='qcolor'+(col===prof.color?' selected':'');
+    s.style.background=col;
+    s.onclick=()=>{prof.color=col;saveProf();document.querySelectorAll('.qcolor').forEach(x=>x.classList.remove('selected'));s.classList.add('selected');buildCars();};
+    r.appendChild(s);
+  });
+}
+
+// ── Lobby UI ──────────────────────────────────────────────────────
+function mkPlayer(slot,name,carId,color){
+  return{slotIndex:slot,name:name||`Player ${slot+1}`,carId:carId||'beetle',
+    carColor:color||P_COLORS[slot]||'#00eeff',
+    emoji:P_EMOJIS[slot]||'🚗',color:P_COLORS[slot]||'#00eeff',
+    progress:0,wpm:0,accuracy:100,finished:false,finishRank:0,timedOut:false};
+}
+function me(){return players[mySlot]||null;}
+
+function renderLobby(){
+  const g=$('lp-grid');g.innerHTML='';
+  for(let i=0;i<MAX_P;i++){
+    const p=players[i],el=document.createElement('div');
+    el.className='lp-slot'+(p?' filled':'');
+    if(p)el.style.setProperty('--p-color',p.color);
+    el.innerHTML=p
+      ?`<div class="lp-avatar">${carSvg(p.carId,p.carColor)}</div><div class="lp-name">${esc(p.name)}</div><div class="lp-badge ${i===0?'badge-host':'badge-joined'}">${i===0?'HOST':'JOINED'}</div>`
+      :`<div class="lp-avatar" style="color:var(--muted);font-size:1.2rem">?</div><div class="lp-name" style="color:var(--muted)">Open Slot</div><div class="lp-badge badge-waiting">WAITING</div>`;
+    g.appendChild(el);
+  }
+  const n=players.filter(Boolean).length;
+  const sb=$('btn-start'),hint=$('lobby-hint');
+  if(isHost){
+    if(n>=2){sb.classList.remove('hidden');hint.style.display='none';}
+    else{sb.classList.add('hidden');hint.style.display='block';hint.textContent=`Need ${2-n} more player(s) to start...`;}
+    setStatus(`Room ready · ${n}/${MAX_P} players`,'s-ok');
+  }else{
+    setStatus(`Connected · ${n}/${MAX_P} players`,'s-ok');
+  }
+}
+
+// ── Race UI ───────────────────────────────────────────────────────
+function renderTracks(){
+  const c=$('tracks');c.innerHTML='';
+  players.filter(Boolean).forEach(p=>{
+    const isMe=p.slotIndex===mySlot,row=document.createElement('div');
+    row.className='racer-row';row.id=`tr-${p.slotIndex}`;
+    row.style.setProperty('--p-color',p.color);
+    row.innerHTML=`<div class="racer-meta"><span class="racer-name">${esc(p.name)}${isMe?' <em>(you)</em>':''}</span><div class="racer-right"><span class="racer-wpm" id="wpm-${p.slotIndex}">0 WPM</span><span class="racer-finish hidden" id="fin-${p.slotIndex}"></span></div></div><div class="track-bar"><div class="track-fill" id="fill-${p.slotIndex}" style="width:0%"><span class="track-car">${p.emoji}</span></div></div>`;
+    c.appendChild(row);
+  });
+}
+function updTracks(){
+  const ords=['1st','2nd','3rd','4th'];
+  players.filter(Boolean).forEach(p=>{
+    const fill=$(`fill-${p.slotIndex}`),wEl=$(`wpm-${p.slotIndex}`),fEl=$(`fin-${p.slotIndex}`),rEl=$(`tr-${p.slotIndex}`);
+    if(fill)fill.style.width=Math.min(100,p.progress)+'%';
+    if(wEl)wEl.textContent=p.wpm+' WPM';
+    if(rEl&&p.finished)rEl.classList.add('finished');
+    if(fEl&&p.finished){fEl.textContent=p.timedOut?'DNF':(ords[p.finishRank-1]||p.finishRank+'th');fEl.classList.remove('hidden');}
+  });
+}
+
+function renderText(typed=''){
+  const d=$('text-disp');if(!d)return;let html='';
+  for(let i=0;i<gameText.length;i++){
+    const raw=gameText[i],ch=raw===' '?'&nbsp;':esc(raw);
+    const cls=i<typed.length?(typed[i]===raw?'correct':'incorrect'):i===typed.length?'current':'';
+    html+=`<span class="${cls}">${ch}</span>`;
+  }
+  d.innerHTML=html;
+  const cur=d.querySelector('.current');if(cur)cur.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+// ── Timer ─────────────────────────────────────────────────────────
+const CIRC=2*Math.PI*18;
+function updRing(rem){
+  const fill=$('ring-fill'),num=$('time-num');if(!fill||!num)return;
+  const frac=Math.max(0,rem/tLimit);
+  fill.style.strokeDashoffset=CIRC*(1-frac);
+  num.textContent=fmt(rem);
+  fill.classList.remove('warn','danger');
+  if(frac<=0.2)fill.classList.add('danger');else if(frac<=0.4)fill.classList.add('warn');
+}
+function startTimer(){
+  let rem=tLimit;updRing(rem);
+  rTimer=setInterval(()=>{rem--;updRing(rem);if(rem<=0){clearInterval(rTimer);onTimeUp();}},1000);
+}
+function onTimeUp(){
+  const p=me();if(!p||p.finished)return;
+  p.timedOut=true;p.finished=true;p.finishRank=++finCount;
+  const inp=$('type-input');if(inp)inp.disabled=true;
+  pub('TIMEOUT',{slotIndex:mySlot,wpm:p.wpm});
+  updTracks();showResult(p.finishRank,p.wpm,p.accuracy,true);
+}
+
+// ── Countdown ─────────────────────────────────────────────────────
+function countdown(cb){
+  const ov=$('cd-overlay'),num=$('cd-num');if(!ov||!num){cb();return;}
+  ov.classList.remove('hidden');let n=CD_SECS;
+  function tick(){num.classList.remove('pop');void num.offsetWidth;num.classList.add('pop');num.textContent=n;
+    if(n===0){num.textContent='GO!';cdTimer=setTimeout(()=>{ov.classList.add('hidden');cb();},700);}
+    else{n--;cdTimer=setTimeout(tick,1000);}
+  }tick();
+}
+
+// ── Prepare race ──────────────────────────────────────────────────
+function prepareRace(text,allP,slot){
+  gameText=text;mySlot=slot;tLimit=limit(text);
+  players=allP.map(p=>p?{...p,progress:0,wpm:0,accuracy:100,finished:false,finishRank:0,timedOut:false}:null);
+  t0=null;finCount=0;
+  $('hud-room').textContent=room.toUpperCase();
+  $('hud-wpm').textContent='0';
+  $('time-tot').textContent=`/ ${fmt(tLimit)}`;
+  updRing(tLimit);
+  $('result-overlay').classList.add('hidden');
+  $('btn-again').classList.add('hidden');
+  renderTracks();renderText('');updTracks();
+  const inp=$('type-input');if(inp){inp.value='';inp.disabled=true;inp.placeholder='Get ready...';}
+  showView('race');
+  countdown(()=>{
+    t0=Date.now();
+    if(inp){inp.disabled=false;inp.placeholder='Start typing...';inp.focus();}
+    startTimer();
+  });
+}
+
+// ── Typing ────────────────────────────────────────────────────────
+function onType(){
+  if(!t0||!gameText)return;
+  const inp=$('type-input'),typed=inp.value;
+  let correct=0;
+  for(let i=0;i<typed.length;i++)if(typed[i]===gameText[i])correct++;
+  const accuracy=typed.length>0?Math.round(correct/typed.length*100):100;
+  renderText(typed);
+  const elapsed=(Date.now()-t0)/60000;
+  const wpm=elapsed>0?Math.floor(correct/5/elapsed):0;
+  let matched=0;
+  for(let i=0;i<gameText.length;i++){if(typed[i]===gameText[i])matched++;else break;}
+  const progress=Math.min(100,matched/gameText.length*100);
+  const p=me();if(!p)return;
+  p.wpm=wpm;p.progress=progress;p.accuracy=accuracy;
+  $('hud-wpm').textContent=wpm;
+  $('acc-disp').textContent=`ACC: ${accuracy}%`;
+  updTracks();
+  pub('PROGRESS',{slotIndex:mySlot,wpm,progress,accuracy});
+  if(typed===gameText&&!p.finished)finishMe(wpm,accuracy);
+}
+function finishMe(wpm,accuracy){
+  const p=me();if(!p||p.finished)return;
+  finCount++;p.finished=true;p.finishRank=finCount;
+  updTracks();
+  pub('FINISHED',{slotIndex:mySlot,finishRank:finCount,wpm,accuracy});
+  const inp=$('type-input');if(inp)inp.disabled=true;
+  showResult(p.finishRank,wpm,accuracy,false);
+}
+function onRemFin(d){const p=players[d.slotIndex];if(!p||p.finished)return;p.finished=true;p.finishRank=d.finishRank;p.wpm=d.wpm;p.accuracy=d.accuracy||100;finCount=Math.max(finCount,d.finishRank);updTracks();}
+function onRemTime(d){const p=players[d.slotIndex];if(!p||p.finished)return;p.finished=true;p.timedOut=true;p.finishRank=++finCount;p.wpm=d.wpm||0;updTracks();}
+
+// ── Results ───────────────────────────────────────────────────────
+function showResult(rank,wpm,accuracy,timedOut){
+  const ords=['1st 🥇','2nd 🥈','3rd 🥉','4th'];
+  const win=rank===1&&!timedOut;
+  $('res-crown').textContent=win?'🏆':timedOut?'⏰':rank===2?'🥈':rank===3?'🥉':'💀';
+  $('res-title').textContent=timedOut?"Time's Up!":win?'You Won!':`You Finished ${ords[rank-1]||rank+'th'}`;
+  $('res-title').style.color=win?'var(--green)':timedOut?'var(--warn)':rank<=2?'var(--primary)':'var(--error)';
+  $('res-wpm').textContent=`${wpm} WPM · ${accuracy}% Accuracy`;
+  $('res-time').textContent=`Time limit was ${fmt(tLimit)}`;
+  const sorted=[...players].filter(p=>p).sort((a,b)=>(a.finishRank||99)-(b.finishRank||99));
+  $('res-lb').innerHTML=sorted.map(p=>{
+    const st=p.timedOut?'timeout':'finished',stTxt=p.timedOut?'Timed Out':(ords[p.finishRank-1]||p.finishRank+'th');
+    return`<div class="lb-row${p.slotIndex===mySlot?' lb-me':''}" style="--p-color:${p.color}"><span class="lb-rank">${ords[(p.finishRank||4)-1]||p.finishRank+'th'}</span><span class="lb-car">${p.emoji}</span><span class="lb-name">${esc(p.name)}</span><span class="lb-wpm">${p.wpm} WPM</span><span class="lb-status ${st}">${stTxt}</span></div>`;
+  }).join('');
+  $('result-overlay').classList.remove('hidden');
+  if(isHost)$('btn-again').classList.remove('hidden');
+}
+
+// ── Ably pub/sub ──────────────────────────────────────────────────
+function pub(type,data){
+  if(!ch)return;
+  ch.publish(type,{...data,_from:myId}).catch(()=>{});
+}
+
+function connectAbly(onReady){
+  myId=uid();
+  const script=document.createElement('script');
+  script.src='https://cdn.ably.com/lib/ably.min-2.js';
+  script.onload=()=>{
+    ably=new Ably.Realtime({key:ABLY_KEY,clientId:myId});
+    ably.connection.on('connected',onReady);
+    ably.connection.on('failed',()=>{alert('Could not connect to the game server. Please check your internet connection.');resetGame();});
+  };
+  script.onerror=()=>{alert('Failed to load game server library. Check your internet.');resetGame();};
+  document.head.appendChild(script);
+}
+
+function subChannel(code,handler){
+  room=code.toLowerCase();
+  ch=ably.channels.get('ntr-room-'+room);
+  ch.subscribe(msg=>{
+    if(msg.data&&msg.data._from===myId)return; // ignore own messages
+    handler(msg.name,msg.data||{});
+  });
+}
+
+// ── HOST ──────────────────────────────────────────────────────────
+function hostGame(){
+  const name=($('inp-name').value||'').trim()||'Racer';
+  prof.name=name;saveProf();
+  isHost=true;players=[];
+  lockBtns(true);setStatus('Connecting','s-connecting');
+
+  connectAbly(()=>{
+    room=mkCode();
+    players[0]=mkPlayer(0,name,prof.carId,prof.color);
+
+    subChannel(room,(type,data)=>{
+      switch(type){
+        case 'JOIN_REQ': hostHandleJoin(data);break;
+        case 'PROGRESS': if(players[data.slotIndex]){players[data.slotIndex].wpm=data.wpm;players[data.slotIndex].progress=data.progress;players[data.slotIndex].accuracy=data.accuracy;}updTracks();break;
+        case 'FINISHED': onRemFin(data);break;
+        case 'TIMEOUT':  onRemTime(data);break;
+      }
+    });
+
+    $('disp-code').textContent=room.toUpperCase();
+    $('hud-room').textContent=room.toUpperCase();
+    renderLobby();gotoGame();showView('lobby');lockBtns(false);
+  });
+}
+
+function hostHandleJoin(data){
+  let slot=-1;
+  for(let i=1;i<MAX_P;i++){if(!players[i]){slot=i;break;}}
+  if(slot===-1){pub('JOIN_DENY',{targetId:data._from,reason:'Room is full.'});return;}
+  const p=mkPlayer(slot,data.name,data.carId,data.color);
+  p._cid=data._from;
+  players[slot]=p;
+  pub('WELCOME',{targetId:data._from,slotIndex:slot,players:players.map(p=>p?{...p}:null),roomCode:room.toUpperCase()});
+  pub('PLAYER_JOIN',{slotIndex:slot,player:{...p}});
+  renderLobby();
+}
+
+// ── GUEST ─────────────────────────────────────────────────────────
+function joinGame(code){
+  code=code.toLowerCase().replace(/[^a-z]/g,'');
+  const name=($('inp-name').value||'').trim()||'Racer';
+  prof.name=name;saveProf();
+  isHost=false;players=[];mySlot=-1;
+  lockBtns(true);
+
+  gotoGame();showView('lobby');
+  $('disp-code').textContent=code.toUpperCase();
+  setStatus('Connecting','s-connecting');
+
+  connectAbly(()=>{
+    subChannel(code,(type,data)=>{
+      // Filter messages meant for others
+      if(data.targetId&&data.targetId!==myId)return;
+
+      switch(type){
+        case 'WELCOME':
+          mySlot=data.slotIndex;
+          players=(data.players||[]).map(p=>p?{...p}:null);
+          $('disp-code').textContent=(data.roomCode||code).toUpperCase();
+          renderLobby();lockBtns(false);
+          clearTimeout(joinTimeout);
+          break;
+        case 'JOIN_DENY': alert(data.reason||'Could not join.');resetGame();break;
+        case 'PLAYER_JOIN':  players[data.slotIndex]=data.player;renderLobby();break;
+        case 'PLAYER_LEFT':  players[data.slotIndex]=null;renderLobby();break;
+        case 'PLAYER_UPD':   players[data.slotIndex]=data.player;renderLobby();break;
+        case 'START_RACE':   prepareRace(data.text,data.players,mySlot);break;
+        case 'PROGRESS':     if(players[data.slotIndex]){players[data.slotIndex].wpm=data.wpm;players[data.slotIndex].progress=data.progress;players[data.slotIndex].accuracy=data.accuracy;}updTracks();break;
+        case 'FINISHED':     onRemFin(data);break;
+        case 'TIMEOUT':      onRemTime(data);break;
+        case 'END_RACE':
+          (data.players||[]).forEach(x=>{const p=players[x.slotIndex];if(p)Object.assign(p,x,{finished:true});});
+          clearInterval(rTimer);
+          const p=me();if(p&&!p.finished){p.finished=true;p.timedOut=true;const inp=$('type-input');if(inp)inp.disabled=true;showResult(players.filter(Boolean).length,p.wpm,p.accuracy,true);}
+          updTracks();break;
+      }
+    });
+
+    // Tell host we want to join
+    pub('JOIN_REQ',{name,carId:prof.carId,color:prof.color});
+
+    // If no WELCOME in 12s, host probably isn't online
+    joinTimeout=setTimeout(()=>{
+      if(mySlot<0){
+        alert(`Room "${code.toUpperCase()}" not found.\n\nMake sure:\n• The code is correct (4 letters)\n• The host's tab is still open\n• You're both on the same website`);
+        resetGame();
+      }
+    },12000);
+  });
+}
+
+let joinTimeout=null;
+
+// ── Reset ─────────────────────────────────────────────────────────
+function resetGame(){
+  clearInterval(rTimer);clearTimeout(cdTimer);clearInterval(dotTimer);clearTimeout(joinTimeout);
+  if(ch){try{ch.unsubscribe();ch.detach();}catch(e){}ch=null;}
+  if(ably){try{ably.close();}catch(e){}ably=null;}
+  players=[];isHost=false;gameText='';t0=null;tLimit=0;
+  mySlot=0;finCount=0;room='';myId=null;
+  const inp=$('type-input');if(inp){inp.value='';inp.disabled=true;inp.placeholder='Waiting...';}
+  ['result-overlay','cd-overlay'].forEach(id=>{const el=$(id);if(el)el.classList.add('hidden');});
+  ['btn-again','btn-start'].forEach(id=>{const el=$(id);if(el)el.classList.add('hidden');});
+  $('hud-wpm').textContent='0';$('acc-disp').textContent='ACC: --%';
+  lockBtns(false);gotoLanding();
+}
+
+function lockBtns(on){['btn-host','btn-join'].forEach(id=>{const b=$(id);if(!b)return;b.disabled=on;b.style.opacity=on?'0.5':'';});}
+
+// ── Init ──────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  initLanding();
+
+  $('type-input').addEventListener('input',onType);
+  $('type-input').addEventListener('paste',e=>e.preventDefault());
+  $('type-input').addEventListener('keydown',e=>{if(e.key==='Enter')e.preventDefault();});
+
+  $('btn-host').addEventListener('click',hostGame);
+
+  $('btn-join').addEventListener('click',()=>{
+    const raw=($('inp-code').value||'').trim().replace(/[^a-zA-Z]/g,'');
+    if(raw.length!==4){alert('Enter a 4-letter room code.');return;}
+    joinGame(raw);
+  });
+
+  $('inp-code').addEventListener('input',function(){
+    this.value=this.value.replace(/[^a-zA-Z]/g,'').toUpperCase().slice(0,4);
+  });
+  $('inp-code').addEventListener('keydown',e=>{if(e.key==='Enter')$('btn-join').click();});
+
+  $('btn-copy').addEventListener('click',()=>{
+    navigator.clipboard.writeText(room.toUpperCase()).catch(()=>{
+      const t=document.createElement('textarea');t.value=room.toUpperCase();document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);
+    });
+    $('btn-copy').textContent='✅';setTimeout(()=>$('btn-copy').textContent='📋',2000);
+  });
+
+  $('btn-start').addEventListener('click',()=>{
+    if(!isHost)return;
+    const text=TEXTS[Math.floor(Math.random()*TEXTS.length)];
+    const active=players.filter(Boolean);
+    pub('START_RACE',{text,players:active.map(p=>({...p}))});
+    prepareRace(text,active,mySlot);
+  });
+
+  $('btn-again').addEventListener('click',()=>{
+    if(!isHost)return;
+    clearInterval(rTimer);
+    const text=TEXTS[Math.floor(Math.random()*TEXTS.length)];
+    const active=players.filter(Boolean);
+    pub('START_RACE',{text,players:active.map(p=>({...p}))});
+    prepareRace(text,active,mySlot);
+  });
+
+  $('btn-quit').addEventListener('click',resetGame);
+  $('btn-leave').addEventListener('click',resetGame);
+});
+</script>
 </body>
 </html>
