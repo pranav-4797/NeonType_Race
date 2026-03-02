@@ -1,6 +1,16 @@
 // ─── Config ──────────────────────────────────────────────────────────────────
-const API_BASE = '/api';
-const WS_BASE  = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
+// 🔧 SET YOUR RENDER BACKEND URL HERE (after deploying server.py to Render.com)
+// Example: 'https://neontype-race-backend.onrender.com'
+// Leave as empty string '' to use same-origin /api (only works if backend
+// is on the same server as the frontend — NOT the case on Vercel).
+const RENDER_BACKEND_URL = 'https://neontype-race-1.onrender.com';
+
+// Auto-detect: if a backend URL is configured use it, else fall back to same-origin
+const _backendOrigin = RENDER_BACKEND_URL.replace(/\/$/, '');
+const API_BASE = _backendOrigin ? `${_backendOrigin}/api` : '/api';
+const WS_BASE  = _backendOrigin
+    ? _backendOrigin.replace(/^http/, 'ws')
+    : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
 
 // ─── UI Elements ─────────────────────────────────────────────────────────────
 const screens = {
@@ -72,13 +82,61 @@ function escapeHtml(str) {
 async function apiFetch(path, method = 'GET', body = null) {
     const opts = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(API_BASE + path, opts);
+    const url = API_BASE + path;
+    let res;
+    try {
+        res = await fetch(url);
+        // Retry with body if GET, or do the real call
+        res = await fetch(url, opts);
+    } catch (networkErr) {
+        // Network-level failure (CORS preflight blocked, server offline, etc.)
+        const isVercel = location.hostname.includes('vercel.app');
+        const noBackend = !RENDER_BACKEND_URL;
+        if (isVercel && noBackend) {
+            throw new Error(
+                'Backend not configured. Open app.js and set RENDER_BACKEND_URL to your Render.com URL.'
+            );
+        }
+        throw new Error(`Cannot reach backend (${url}). Is the Render server running?`);
+    }
     if (!res.ok) {
-        const err = await res.json().catch(() => ({ detail: 'Unknown error' }));
-        throw new Error(err.detail || 'Request failed');
+        let detail = 'Unknown error';
+        try {
+            const j = await res.json();
+            detail = j.detail || JSON.stringify(j);
+        } catch (_) {
+            detail = `HTTP ${res.status} ${res.statusText}`;
+        }
+        throw new Error(detail);
     }
     return res.json();
 }
+
+// ─── Backend Health Check ─────────────────────────────────────────────────────
+async function checkBackendHealth() {
+    const statusEl = document.getElementById('backend-status');
+    if (!statusEl) return;
+    statusEl.textContent = '⏳ Connecting to server...';
+    statusEl.className = 'backend-status checking';
+    try {
+        const r = await fetch(API_BASE.replace('/api', '') + '/health');
+        if (r.ok) {
+            statusEl.textContent = '🟢 Server online';
+            statusEl.className = 'backend-status online';
+        } else {
+            throw new Error('bad status');
+        }
+    } catch (_) {
+        const isVercel = location.hostname.includes('vercel.app');
+        if (isVercel && !RENDER_BACKEND_URL) {
+            statusEl.innerHTML = '🔴 Backend not configured — set <code>RENDER_BACKEND_URL</code> in app.js';
+        } else {
+            statusEl.textContent = '🟡 Server offline or waking up (Render free tier takes ~30s)';
+        }
+        statusEl.className = 'backend-status offline';
+    }
+}
+checkBackendHealth();
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 function connectWS(roomCode, playerId) {
