@@ -1,9 +1,6 @@
 // ─── Config ──────────────────────────────────────────────────────────────────
-
-const BACKEND_URL = 'https://neontype-race-1.onrender.com';
-
-const API_BASE = `${BACKEND_URL}/api`;
-const WS_BASE  = BACKEND_URL.replace(/^http/, 'ws');
+const API_BASE = '/api';
+const WS_BASE  = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`;
 
 // ─── UI Elements ─────────────────────────────────────────────────────────────
 const screens = {
@@ -30,9 +27,6 @@ const els = {
     textDisplay:      document.getElementById('text-display'),
     typingInput:      document.getElementById('typing-input'),
     tracksContainer:  document.getElementById('tracks-container'),
-    overlay:          document.getElementById('result-overlay'),
-    resultTitle:      document.getElementById('result-title'),
-    resultStats:      document.getElementById('result-stats'),
     timerDisplay:     document.getElementById('timer-display')
 };
 
@@ -43,12 +37,15 @@ let myRoomCode  = null;
 let isHost      = false;
 
 let gameData = {
-    text:      '',
-    startTime: null,
-    timeLimit: 0,
-    players:   {},   // slot_index -> player object
-    mySlot:    null,
-    finished:  false
+    text:       '',
+    startTime:  null,
+    timeLimit:  0,
+    wordCount:  0,
+    charCount:  0,
+    players:    {},   // slot_index -> player object
+    mySlot:     null,
+    finished:   false,
+    summaryShown: false
 };
 
 let timerInterval    = null;
@@ -131,7 +128,7 @@ function handleServerMessage(msg) {
             break;
 
         case 'race_started':
-            startRace(msg.text, msg.time_limit, msg.players);
+            startRace(msg.text, msg.time_limit, msg.players, msg.word_count, msg.char_count);
             break;
 
         case 'player_progress': {
@@ -143,9 +140,9 @@ function handleServerMessage(msg) {
 
         case 'player_finished': {
             const p = gameData.players[msg.slot_index];
-            if (p) { p.finished = true; p.finish_rank = msg.finish_rank; p.wpm = msg.wpm; p.progress = 100; }
+            if (p) { p.finished = true; p.finish_rank = msg.finish_rank; p.wpm = msg.wpm; p.accuracy = msg.accuracy; p.progress = 100; }
             renderTracks();
-            if (msg.slot_index === gameData.mySlot && !gameData.finished) showResult(msg.finish_rank, msg.wpm);
+            // Don't show individual result — wait for race_ended summary
             break;
         }
 
@@ -153,7 +150,7 @@ function handleServerMessage(msg) {
             const p = gameData.players[msg.slot_index];
             if (p) { p.finished = true; p.timed_out = true; p.wpm = msg.wpm; }
             renderTracks();
-            if (msg.slot_index === gameData.mySlot && !gameData.finished) showResult(null, msg.wpm, true);
+            // Don't show individual result — wait for race_ended summary
             break;
         }
 
@@ -161,10 +158,7 @@ function handleServerMessage(msg) {
             syncPlayers(msg.players);
             renderTracks();
             stopTimers();
-            if (!gameData.finished) {
-                const me = gameData.players[gameData.mySlot];
-                if (me) showResult(me.finish_rank, me.wpm, me.timed_out);
-            }
+            showSummary(msg.players);
             break;
     }
 }
@@ -213,11 +207,14 @@ function updateLobbyUI() {
 }
 
 // ─── Race ─────────────────────────────────────────────────────────────────────
-function startRace(text, timeLimit, playersArray) {
-    gameData.text      = text;
-    gameData.timeLimit = timeLimit;
-    gameData.startTime = null;
-    gameData.finished  = false;
+function startRace(text, timeLimit, playersArray, wordCount, charCount) {
+    gameData.text        = text;
+    gameData.timeLimit   = timeLimit;
+    gameData.startTime   = null;
+    gameData.finished    = false;
+    gameData.summaryShown = false;
+    gameData.wordCount   = wordCount || text.trim().split(/\s+/).length;
+    gameData.charCount   = charCount || text.length;
 
     syncPlayers(playersArray);
     for (const p of Object.values(gameData.players)) {
@@ -232,9 +229,6 @@ function startRace(text, timeLimit, playersArray) {
     renderTracks();
     els.typingInput.value    = '';
     els.typingInput.disabled = false;
-    els.overlay.classList.add('hidden');
-    btns.playAgain.classList.add('hidden');
-
     showScreen('race');
     startTimers(timeLimit);
     setTimeout(() => els.typingInput.focus(), 100);
@@ -351,23 +345,82 @@ function renderTracks() {
     }
 }
 
-// ─── Results ──────────────────────────────────────────────────────────────────
-function showResult(rank, wpm, timedOut = false) {
+// ─── Match Summary ────────────────────────────────────────────────────────────
+function showSummary(playersArray) {
+    if (gameData.summaryShown) return;
+    gameData.summaryShown = true;
     gameData.finished = true;
-    if (timedOut) {
-        els.resultTitle.style.color = 'var(--text-muted)';
-        els.resultTitle.innerText   = "Time's Up! ⏰";
-        els.resultStats.innerText   = `You typed ${wpm} WPM before time ran out.`;
-    } else if (rank === 1) {
-        els.resultTitle.style.color = 'var(--success)';
-        els.resultTitle.innerText   = 'You Won! 🏆';
-        els.resultStats.innerText   = `${wpm} WPM — First place!`;
+
+    // Sort by finish_rank (finished first), then timed_out last
+    const sorted = [...playersArray].sort((a, b) => {
+        if (a.timed_out && !b.timed_out) return 1;
+        if (!a.timed_out && b.timed_out) return -1;
+        if (a.finish_rank && b.finish_rank) return a.finish_rank - b.finish_rank;
+        if (a.finish_rank) return -1;
+        if (b.finish_rank) return 1;
+        return 0;
+    });
+
+    const winner = sorted.find(p => !p.timed_out && p.finish_rank === 1);
+    const me     = playersArray.find(p => p.id === myPlayerId);
+    const myRank = me && !me.timed_out ? me.finish_rank : null;
+
+    // Headline
+    const summaryTitle = document.getElementById('summary-title');
+    const summarySubtitle = document.getElementById('summary-subtitle');
+
+    if (winner) {
+        const iWon = winner.id === myPlayerId;
+        summaryTitle.innerHTML = iWon
+            ? '🏆 You Won!'
+            : `${winner.emoji} ${escapeHtml(winner.name)} Wins!`;
+        summaryTitle.style.color = iWon ? 'var(--success)' : winner.color;
+        summarySubtitle.innerText = iWon
+            ? `First place with ${winner.wpm} WPM — Outstanding!`
+            : `${winner.wpm} WPM — Better luck next time!`;
     } else {
-        els.resultTitle.style.color = 'var(--error)';
-        els.resultTitle.innerText   = `You Finished #${rank}! 💥`;
-        els.resultStats.innerText   = `${wpm} WPM`;
+        summaryTitle.innerHTML = "⏰ Time's Up!";
+        summaryTitle.style.color = 'var(--text-muted)';
+        summarySubtitle.innerText = 'Nobody finished in time.';
     }
-    els.overlay.classList.remove('hidden');
+
+    // Leaderboard rows
+    const tbody = document.getElementById('summary-tbody');
+    tbody.innerHTML = '';
+    const medals = ['🥇', '🥈', '🥉'];
+
+    sorted.forEach((p, idx) => {
+        const isMe = p.id === myPlayerId;
+        const rank = p.timed_out ? '⏰' : (medals[idx] || `#${idx + 1}`);
+        const statusText = p.timed_out ? 'Timed out' : `#${p.finish_rank} Finished`;
+        const tr = document.createElement('tr');
+        tr.className = isMe ? 'my-row' : '';
+        tr.innerHTML = `
+            <td class="rank-cell">${rank}</td>
+            <td class="player-cell">
+                <span class="player-dot" style="background:${p.color}"></span>
+                <span style="color:${p.color}">${p.emoji} ${escapeHtml(p.name)}</span>
+                ${isMe ? '<span class="you-badge">You</span>' : ''}
+            </td>
+            <td class="stat-cell">${p.wpm} <span class="stat-label">WPM</span></td>
+            <td class="stat-cell">${p.accuracy ?? '—'}<span class="stat-label">%</span></td>
+            <td class="stat-cell progress-cell">${Math.round(p.progress ?? 0)}<span class="stat-label">%</span></td>
+            <td class="status-cell">${statusText}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    // Race stats footer
+    document.getElementById('summary-words').innerText  = gameData.wordCount;
+    document.getElementById('summary-chars').innerText  = gameData.charCount;
+    document.getElementById('summary-players').innerText = sorted.length;
+    const finishedCount = sorted.filter(p => !p.timed_out).length;
+    document.getElementById('summary-finished').innerText = `${finishedCount}/${sorted.length}`;
+
+    document.getElementById('screen-summary').classList.add('active');
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-summary').classList.add('active');
+
     if (isHost) btns.playAgain.classList.remove('hidden');
 }
 
@@ -420,7 +473,12 @@ btns.copy.addEventListener('click', () => {
 
 btns.start.addEventListener('click', () => wsSend({ type: 'start_race' }));
 
-btns.playAgain.addEventListener('click', () => { if (isHost) wsSend({ type: 'start_race' }); });
+btns.playAgain.addEventListener('click', () => {
+    if (isHost) {
+        document.getElementById('screen-summary').classList.remove('active');
+        wsSend({ type: 'start_race' });
+    }
+});
 
 btns.quit.addEventListener('click', resetGame);
 
@@ -432,12 +490,12 @@ function resetGame() {
     gameData = { text: '', startTime: null, timeLimit: 0, players: {}, mySlot: null, finished: false };
     els.typingInput.disabled       = true;
     els.typingInput.value          = '';
-    els.overlay.classList.add('hidden');
     btns.start.classList.add('hidden');
     btns.playAgain.classList.add('hidden');
     els.lobbyTitle.innerText       = 'Waiting for players...';
     els.playersContainer.innerHTML = '';
     els.tracksContainer.innerHTML  = '';
     els.timerDisplay.innerText     = '';
+    document.getElementById('screen-summary').classList.remove('active');
     showScreen('home');
 }

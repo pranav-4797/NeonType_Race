@@ -25,12 +25,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
-# Allow all origins so any frontend (Vercel, localhost, etc.) can connect.
-# To restrict: replace ["*"] with ["https://your-app.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,   # must be False when allow_origins=["*"]
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,7 +36,7 @@ app.add_middleware(
 # ── Game Constants ────────────────────────────────────────────────────────────
 MAX_PLAYERS = 4
 IDEAL_WPM   = 60
-TIME_FACTOR = 1.5
+TIME_FACTOR = 2.5
 
 TEXTS = [
     "The city never sleeps. Beneath the flickering neon canopy, vendors hawk steaming bowls of ramen while drones weave between skyscrapers like silver fish through a glass sea.",
@@ -251,10 +249,14 @@ async def handle_message(room_code: str, player_id: str, data: dict):
                       'finished': False, 'finish_rank': 0,
                       'timed_out': False, 'finish_time': None})
 
+        word_count = len(text.strip().split())
+        char_count = len(text)
         await broadcast_all(room_code, {
             'type':       'race_started',
             'text':       text,
             'time_limit': time_limit,
+            'word_count': word_count,
+            'char_count': char_count,
             'players':    list(room['players'].values()),
         })
 

@@ -96,18 +96,59 @@
                 ></textarea>
             </div>
 
-            <!-- Result Overlay (inside race screen so it overlays the race) -->
-            <div id="result-overlay" class="overlay hidden">
-                <div class="result-modal glass-panel">
-                    <h2 id="result-title" class="result-title"></h2>
-                    <div class="stats-badge">
-                        <p id="result-stats" class="result-stats"></p>
+            <!-- Results handled by summary screen -->
+        </div>
+
+
+        <!-- ── Summary Screen ── -->
+        <div id="screen-summary" class="screen">
+            <div class="glass-panel summary-panel">
+
+                <div class="summary-header">
+                    <h2 id="summary-title" class="summary-title"></h2>
+                    <p id="summary-subtitle" class="summary-subtitle"></p>
+                </div>
+
+                <div class="summary-table-wrap">
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>WPM</th>
+                                <th>Accuracy</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="summary-race-stats">
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Words</span>
+                        <span id="summary-words" class="rsp-value">—</span>
                     </div>
-                    <div class="result-actions">
-                        <button id="btn-play-again" class="btn primary-btn hidden">Play Again</button>
-                        <button id="btn-quit" class="btn secondary-btn">Back to Home</button>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Characters</span>
+                        <span id="summary-chars" class="rsp-value">—</span>
+                    </div>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Players</span>
+                        <span id="summary-players" class="rsp-value">—</span>
+                    </div>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Finished</span>
+                        <span id="summary-finished" class="rsp-value">—</span>
                     </div>
                 </div>
+
+                <div class="summary-actions">
+                    <button id="btn-play-again" class="btn primary-btn hidden">🔄 Play Again</button>
+                    <button id="btn-quit" class="btn secondary-btn">🏠 Back to Home</button>
+                </div>
+
             </div>
         </div>
 
