@@ -1,8 +1,6 @@
 // ─── Config ──────────────────────────────────────────────────────────────────
-// 🔧 PASTE YOUR RENDER BACKEND URL HERE (no trailing slash)
-// Example: 'https://neontype-race-backend.onrender.com'
-// Get this after deploying server.py to Render.com (see DEPLOYMENT.md)
-const BACKEND_URL = 'https://YOUR-BACKEND.onrender.com';
+
+const BACKEND_URL = 'https://neontype-race-1.onrender.com';
 
 const API_BASE = `${BACKEND_URL}/api`;
 const WS_BASE  = BACKEND_URL.replace(/^http/, 'ws');
