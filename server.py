@@ -25,10 +25,12 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# Allow all origins so any frontend (Vercel, localhost, etc.) can connect.
+# To restrict: replace ["*"] with ["https://your-app.vercel.app"]
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,   # must be False when allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )
