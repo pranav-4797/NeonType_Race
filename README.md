@@ -53,58 +53,28 @@ Real-time multiplayer typing race with neon glass UI and live WebSocket synchron
 neon-type-race/
 │
 ├── index.html
+
 ├── style.css
+
 ├── app.js
+
 ├── bg.jpg
+
 ├── vercel.json
+
 │
+
 ├── server.py
+
 ├── requirements.txt
+
 └── render.yaml
 
 
 ---
 
-## 🚀 Run Locally
+##👨‍💻 Author
 
-### 1️⃣ Backend
-
-pip install -r requirements.txt
-uvicorn server:app --reload
-
-Runs on:
-
-http://127.0.0.1:8000
-2️⃣ Frontend
-
-In app.js, set:
-
-const RENDER_BACKEND_URL = 'http://127.0.0.1:8000';
-
-Then open index.html using Live Server.
-
-🔌 API Endpoints
-POST /api/rooms/create
-POST /api/rooms/join
-GET  /api/rooms/{room_code}
-GET  /health
-
-WebSocket:
-
-/ws/{room_code}/{player_id}
-📌 Future Improvements
-
-Global leaderboard
-
-User authentication
-
-Database integration
-
-Spectator mode
-
-Anti-cheat validation
-
-👨‍💻 Author
-
-Krishna
-Engineering Student | Real-time Web Developer
+###Krishna
+Engineering Student 
+Real-time Web Developer
