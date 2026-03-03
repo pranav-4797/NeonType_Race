@@ -73,8 +73,8 @@ neon-type-race/
 
 ---
 
-##👨‍💻 Author
+## 👨‍💻 Author
 
-###Krishna
+### Krishna
 Engineering Student 
 Real-time Web Developer
