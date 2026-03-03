@@ -53,21 +53,13 @@ Real-time multiplayer typing race with neon glass UI and live WebSocket synchron
 neon-type-race/
 │
 ├── index.html
-
 ├── style.css
-
 ├── app.js
-
 ├── bg.jpg
-
 ├── vercel.json
-
 │
-
 ├── server.py
-
 ├── requirements.txt
-
 └── render.yaml
 
 
