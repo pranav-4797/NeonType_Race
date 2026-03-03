@@ -75,6 +75,6 @@ neon-type-race/
 
 ## 👨‍💻 Author
 
-### Krishna
-Engineering Student 
+### Pranav
+AI/ML Engineering Student 
 Real-time Web Developer
