@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonType Race - Multiplayer Typing Game</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- Background Orbs -->
+    <div class="bg-orb orb-1"></div>
+    <div class="bg-orb orb-2"></div>
+    <div class="bg-orb orb-3"></div>
+
+    <div class="app-container">
+
+        <!-- ── Home Screen ── -->
+        <div id="screen-home" class="screen active">
+            <div class="logo-container">
+                <h1 class="neon-title">NEON_TYPE<br/><span class="neon-subtitle">RACE</span></h1>
+                <p class="tagline">Real-time multiplayer typing race</p>
+            </div>
+
+            <div class="home-actions glass-panel">
+                <!-- Player name shared between host & join -->
+                <div class="name-row">
+                    <input type="text" id="input-player-name" placeholder="Your name (optional)" maxlength="16" autocomplete="off">
+                </div>
+
+                <div class="host-join-row">
+                    <div class="host-section">
+                        <h3>Create a Room</h3>
+                        <p class="section-hint">Up to 4 players</p>
+                        <button id="btn-host" class="btn primary-btn">Host Game</button>
+                    </div>
+
+                    <div class="divider"><span>OR</span></div>
+
+                    <div class="join-section">
+                        <h3>Join a Room</h3>
+                        <p class="section-hint">Enter the host's code</p>
+                        <div class="input-group">
+                            <input type="text" id="input-room-code" placeholder="ABCD" maxlength="4" autocomplete="off">
+                            <button id="btn-join" class="btn secondary-btn">Join</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Lobby Screen ── -->
+        <div id="screen-lobby" class="screen">
+            <div class="glass-panel lobby-panel">
+                <h2 id="lobby-title" class="neon-text-small">Waiting for players...</h2>
+
+                <div class="room-code-display">
+                    <p class="room-label">Room Code</p>
+                    <div class="code-wrapper">
+                        <h1 id="display-room-code">XXXX</h1>
+                        <button id="btn-copy-code" class="icon-btn" title="Copy Room Code">📋</button>
+                    </div>
+                    <p class="room-hint">Share this code with friends to join</p>
+                </div>
+
+                <div id="players-container" class="players-container"></div>
+
+                <div class="lobby-actions">
+                    <button id="btn-start-race" class="btn primary-btn hidden">🏁 Start Race</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Race Screen ── -->
+        <div id="screen-race" class="screen">
+            <div class="race-header glass-panel">
+                <div class="race-top-bar">
+                    <span class="race-label">Live Race</span>
+                    <span id="timer-display" class="timer"></span>
+                </div>
+                <div id="tracks-container" class="tracks-container"></div>
+            </div>
+
+            <div class="typing-area glass-panel">
+                <div id="text-display" class="text-display"></div>
+                <textarea
+                    id="typing-input"
+                    class="typing-input"
+                    disabled
+                    placeholder="Waiting for race to start..."
+                    autocomplete="off"
+                    autocorrect="off"
+                    autocapitalize="off"
+                    spellcheck="false"
+                ></textarea>
+            </div>
+
+            <!-- Results handled by summary screen -->
+        </div>
+
+
+        <!-- ── Summary Screen ── -->
+        <div id="screen-summary" class="screen">
+            <div class="glass-panel summary-panel">
+
+                <div class="summary-header">
+                    <h2 id="summary-title" class="summary-title"></h2>
+                    <p id="summary-subtitle" class="summary-subtitle"></p>
+                </div>
+
+                <div class="summary-table-wrap">
+                    <table class="summary-table">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Player</th>
+                                <th>WPM</th>
+                                <th>Accuracy</th>
+                                <th>Progress</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="summary-tbody"></tbody>
+                    </table>
+                </div>
+
+                <div class="summary-race-stats">
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Words</span>
+                        <span id="summary-words" class="rsp-value">—</span>
+                    </div>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Characters</span>
+                        <span id="summary-chars" class="rsp-value">—</span>
+                    </div>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Players</span>
+                        <span id="summary-players" class="rsp-value">—</span>
+                    </div>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Finished</span>
+                        <span id="summary-finished" class="rsp-value">—</span>
+                    </div>
+                </div>
+
+                <div class="summary-actions">
+                    <button id="btn-play-again" class="btn primary-btn hidden">🔄 Play Again</button>
+                    <button id="btn-quit" class="btn secondary-btn">🏠 Back to Home</button>
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
