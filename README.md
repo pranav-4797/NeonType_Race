@@ -26,7 +26,116 @@
 
 ---
 
-## 🏗️ Architecture & Tech Stack
+---
+
+## 🏗️ System Architecture & Data Flow
+
+### 📐 High-Level System Architecture
+
+```mermaid
+graph TB
+    subgraph ClientLayer [" 💻 Client Layer (Browser / SPA) "]
+        UI["Cyberpunk Glassmorphism UI<br/>(index.html & style.css)"]
+        Engine["Client Engine & Telemetry<br/>(app.js)"]
+        State["Local State<br/>(WPM, Accuracy, Progress)"]
+        WSClient["WebSocket Client Manager"]
+    end
+
+    subgraph CloudInfra [" ☁️ Cloud Deployment Infrastructure "]
+        Vercel["Vercel Frontend Hosting<br/>(SPA Rewrites)"]
+        Render["Render Backend Web Service<br/>(Uvicorn ASGI Server)"]
+    end
+
+    subgraph BackendLayer [" ⚡ Backend Layer (FastAPI / Python 3.11) "]
+        CORS["CORS Middleware"]
+        RESTRouter["REST API Router<br/>(/api/rooms/create, /join)"]
+        WSEndpoint["WebSocket Handler<br/>(/ws/{room_code}/{player_id})"]
+        
+        subgraph CoreServices [" 🎮 Game Logic & Engine "]
+            RoomMgr["Room & Player Manager"]
+            TimeCalc["Dynamic Time Limit Calculator"]
+            Broadcaster["Async Event Broadcaster"]
+        end
+
+        subgraph InMemState [" 💾 In-Memory State Store "]
+            ActiveRooms["active_rooms Dict<br/>(Lobby / Racing State)"]
+            Connections["connections Dict<br/>(Active WebSockets)"]
+        end
+    end
+
+    Vercel -.-> UI
+    Render -.-> RESTRouter
+    Render -.-> WSEndpoint
+
+    UI <--> Engine
+    Engine <--> State
+    Engine <--> WSClient
+
+    WSClient <-->|"Full-Duplex WS Telemetry"| WSEndpoint
+    Engine <-->|"HTTPS REST Requests"| RESTRouter
+
+    RESTRouter --> RoomMgr
+    RoomMgr --> ActiveRooms
+    WSEndpoint --> Broadcaster
+    Broadcaster --> Connections
+    WSEndpoint --> CoreServices
+```
+
+---
+
+### 🔄 Real-Time Multiplayer Race Sequence
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Host as 🏎️ Host Player
+    actor Guest as 🚗 Guest Player
+    participant SPA as Single Page App (JS)
+    participant REST as FastAPI REST API
+    participant WS as WebSocket Server
+    participant Engine as Game Engine & State
+
+    Host->>REST: POST /api/rooms/create (Player Name)
+    REST->>Engine: Generate Room Code (e.g. ABCD) & Host ID
+    Engine-->>REST: Room & Player Object
+    REST-->>Host: {room_code: "ABCD", player_id: "uuid"}
+
+    Guest->>REST: POST /api/rooms/join (ABCD, Player Name)
+    REST->>Engine: Validate Slot & Register Player
+    Engine-->>REST: Player & Room Snapshot
+    REST-->>Guest: {room_code: "ABCD", players: [...]}
+
+    Host->>WS: Connect ws://server/ws/ABCD/host_id
+    Guest->>WS: Connect ws://server/ws/ABCD/guest_id
+    WS-->>Engine: Register Active WebSocket Connections
+    WS-->>Host: Broadcast {"type": "player_joined"}
+    WS-->>Guest: Broadcast {"type": "player_joined"}
+
+    Host->>WS: Send {"type": "start_race"}
+    WS->>Engine: Pick Quote & Compute Dynamic Time Limit
+    Engine->>WS: Broadcast {"type": "race_started", text, time_limit}
+    WS-->>Host: Start Race & Timer
+    WS-->>Guest: Start Race & Timer
+
+    loop Live Race Telemetry Stream
+        Guest->>WS: Send {"type": "typing_progress", wpm, progress, accuracy}
+        WS->>Engine: Update In-Memory Telemetry
+        WS-->>Host: Broadcast {"type": "player_progress", guest_id, progress}
+    end
+
+    Host->>WS: Send {"type": "finish_race", wpm, accuracy}
+    WS->>Engine: Record Rank & Finish Timestamp
+    WS-->>Host: Broadcast {"type": "player_finished", rank: 1}
+    WS-->>Guest: Broadcast {"type": "player_finished", rank: 1}
+
+    Engine->>WS: Broadcast {"type": "race_ended", final_standings}
+    WS-->>Host: Display Summary & Podium Standings
+    WS-->>Guest: Display Summary & Podium Standings
+```
+
+---
+
+## 🛠️ Technology Stack Detail
 
 ### Frontend
 - **HTML5 & CSS3**: Custom responsive layout with vanilla CSS design system, glassmorphism containers, keyframe glow animations, and CSS custom properties.
