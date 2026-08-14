@@ -1,6 +1,6 @@
 // ─── Config ──────────────────────────────────────────────────────────────────
 // 🔧 SET YOUR RENDER BACKEND URL HERE (after deploying server.py to Render.com)
-// Example: 'https://neontype-race-backend.onrender.com'
+// Example: 'https://neontyperace-backend.onrender.com'
 // Leave as empty string '' to use same-origin /api (only works if backend
 // is on the same server as the frontend — NOT the case on Vercel).
 const RENDER_BACKEND_URL = 'https://neontype-race-1.onrender.com';
