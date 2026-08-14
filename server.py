@@ -14,7 +14,7 @@ from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPExce
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# ── Logging (must be defined before anything uses it) ────────────────────────
+# ── Logging (must be defined before aything uses it) ────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
