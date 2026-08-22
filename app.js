@@ -117,14 +117,34 @@ function escapeHtml(str) {
         .replace(/"/g, '&quot;');
 }
 
+// Inline SVG icon from the sprite in index.html
+function icon(name, cls = '') {
+    return `<svg class="icon ${cls}" aria-hidden="true"><use href="#${name}"/></svg>`;
+}
+const IC = {
+    zap:    'i-zap',    login:  'i-login',  eye:   'i-eye',
+    copy:   'i-copy',   link:   'i-link',   bot:   'i-bot',
+    flag:   'i-flag',   clock:  'i-clock',  share: 'i-share',
+    rotate: 'i-rotate', home:   'i-home',   check: 'i-check',
+    alert:  'i-alert',  info:   'i-info',   x:     'i-x',
+    flame:  'i-flame',  trophy: 'i-trophy'
+};
+
+// Update only a button's text label (keeps its SVG icon intact)
+function setBtnLabel(btn, text) {
+    const label = btn.querySelector('.btn-label');
+    if (label) label.textContent = text;
+    else btn.textContent = text;
+}
+
 // ─── Toast Notifications ─────────────────────────────────────────────────────
 const toastContainer = document.getElementById('toast-container');
 
 function toast(message, type = 'info', duration = 3500) {
-    const icons = { info: '💡', success: '✅', error: '⚠️' };
+    const icons = { info: IC.info, success: IC.check, error: IC.alert };
     const el = document.createElement('div');
     el.className = `toast ${type}`;
-    el.innerHTML = `<span class="toast-icon">${icons[type] || icons.info}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
+    el.innerHTML = `<span class="toast-icon">${icon(icons[type] || IC.info)}</span><span class="toast-msg">${escapeHtml(message)}</span>`;
     toastContainer.appendChild(el);
 
     // Force reflow so the entry animation always plays for stacked toasts
@@ -286,7 +306,7 @@ function handleServerMessage(msg) {
             if (screens.lobby.classList.contains('active')) {
                 const isBot = !!msg.player.is_bot;
                 toast(isBot
-                    ? `🤖 ${msg.player.name} joined (~${msg.player.skill_wpm} WPM)`
+                    ? `${msg.player.name} joined (~${msg.player.skill_wpm} WPM)`
                     : `${msg.player.emoji} ${msg.player.name} joined the room`, 'info', 2500);
             }
             updateLobbyUI();
@@ -313,7 +333,7 @@ function handleServerMessage(msg) {
             if (p) { p.finished = true; p.finish_rank = msg.finish_rank; p.wpm = msg.wpm; p.accuracy = msg.accuracy; p.progress = 100; }
             renderTracks();
             if (!isSpectator && msg.player_id !== myPlayerId) {
-                toast(`🏁 ${p ? p.name : 'A player'} finished #${msg.finish_rank} (${msg.wpm} WPM)`, 'info', 2500);
+                toast(`${p ? p.name : 'A player'} finished #${msg.finish_rank} (${msg.wpm} WPM)`, 'info', 2500);
             }
             break;
         }
@@ -367,7 +387,7 @@ function updateLobbyUI() {
             <div class="avatar" style="border-color:${p.color}">${p.emoji}</div>
             <h3>${escapeHtml(p.name)}${isBot ? '<span class="bot-tag">BOT</span>' : ''}</h3>
             <span class="status ready" style="color:${p.color}">${isMe ? '(You)' : (isBot ? `~${p.skill_wpm} WPM` : 'Ready')}</span>
-            ${isBot && isHost ? `<button class="bot-remove" data-pid="${p.id}" title="Remove ${escapeHtml(p.name)}">✕</button>` : ''}
+            ${isBot && isHost ? `<button class="bot-remove" data-pid="${p.id}" title="Remove ${escapeHtml(p.name)}" aria-label="Remove bot">${icon(IC.x)}</button>` : ''}
         `;
         els.playersContainer.appendChild(card);
     }
@@ -377,8 +397,8 @@ function updateLobbyUI() {
 
     if (isSpectator) {
         els.lobbyTitle.innerText = count < 2
-            ? '👀 Spectating — waiting for the race to start...'
-            : `👀 Spectating ${count} players — waiting for host to start...`;
+            ? 'Spectating — waiting for the race to start...'
+            : `Spectating ${count} players — waiting for host to start...`;
     } else if (isHost) {
         if (count >= 2) {
             btns.start.classList.remove('hidden');
@@ -437,7 +457,7 @@ function startRace(text, timeLimit, playersArray, wordCount, charCount) {
     els.typingInput.value = '';
     if (isSpectator) {
         els.typingInput.disabled   = true;
-        els.typingInput.placeholder = '👀 Spectator mode — typing is disabled';
+        els.typingInput.placeholder = 'Spectator mode — typing is disabled';
         els.spectateBanner.classList.remove('hidden');
     } else {
         els.typingInput.disabled   = false;
@@ -475,20 +495,20 @@ function handleSpectateSnapshot(msg) {
 
         els.typingInput.value = '';
         els.typingInput.disabled   = true;
-        els.typingInput.placeholder = '👀 Spectator mode — typing is disabled';
+        els.typingInput.placeholder = 'Spectator mode — typing is disabled';
         els.spectateBanner.classList.remove('hidden');
 
         renderText(0);
         renderTracks();
         showScreen('race');
         startTimers(msg.time_limit, Math.max(0, msg.elapsed || 0));
-        toast(`👀 Watching ${msg.players.length} racers live`, 'info', 3000);
+        toast(`Watching ${msg.players.length} racers live`, 'info', 3000);
     } else {
         syncPlayers(msg.players || []);
         els.displayRoom.innerText = myRoomCode;
         showScreen('lobby');
         updateLobbyUI();
-        toast(`👀 Spectating room ${myRoomCode} — the race will start automatically`, 'info', 4000);
+        toast(`Spectating room ${myRoomCode} — the race will start automatically`, 'info', 4000);
     }
 }
 
@@ -500,7 +520,7 @@ function startTimers(timeLimit, startOffsetSec = 0) {
 
     timerInterval = setInterval(() => {
         const rem = Math.max(0, (deadline - Date.now()) / 1000);
-        els.timerDisplay.innerText = `⏱ ${Math.ceil(rem)}s`;
+        els.timerDisplay.innerHTML = `${icon(IC.clock)}<span>${Math.ceil(rem)}s</span>`;
         tickCount++;
 
         const elapsed = timeLimit - rem;
@@ -516,7 +536,7 @@ function startTimers(timeLimit, startOffsetSec = 0) {
         updateGhost(elapsed);
 
         if (rem <= 0) {
-            els.timerDisplay.innerText = '⏱ 0s';
+            els.timerDisplay.innerHTML = `${icon(IC.clock)}<span>0s</span>`;
             handleTimeout();
         }
     }, 250);
@@ -669,7 +689,9 @@ function renderTracks() {
         const progress = Math.min(100, p.progress || 0);
         const wpm      = p.wpm || 0;
         let badge = '';
-        if (p.finished) badge = p.timed_out ? ' ⏰' : ` 🏁 #${p.finish_rank}`;
+        if (p.finished) badge = p.timed_out
+            ? ` ${icon(IC.clock, 'icon-badge')}`
+            : ` ${icon(IC.flag, 'icon-badge')} #${p.finish_rank}`;
 
         const track = document.createElement('div');
         track.className = 'racer-track';
@@ -735,14 +757,14 @@ function showSummary(playersArray) {
     if (winner) {
         const iWon = winner.id === myPlayerId;
         summaryTitle.innerHTML = iWon
-            ? '🏆 You Won!'
+            ? `${icon(IC.trophy, 'icon-title')} You Won!`
             : `${winner.emoji} ${escapeHtml(winner.name)} Wins!`;
         summaryTitle.style.color = iWon ? 'var(--success)' : winner.color;
         summarySubtitle.innerText = iWon
             ? `First place with ${winner.wpm} WPM — Outstanding!`
             : `${winner.wpm} WPM — Better luck next time!`;
     } else {
-        summaryTitle.innerHTML = "⏰ Time's Up!";
+        summaryTitle.innerHTML = `${icon(IC.alert, 'icon-title')} Time's Up!`;
         summaryTitle.style.color = 'var(--text-muted)';
         summarySubtitle.innerText = 'Nobody finished in time.';
     }
@@ -754,7 +776,7 @@ function showSummary(playersArray) {
 
     sorted.forEach((p, idx) => {
         const isMe = p.id === myPlayerId;
-        const rank = p.timed_out ? '⏰' : (medals[idx] || `#${idx + 1}`);
+        const rank = p.timed_out ? icon(IC.clock, 'icon-badge') : (medals[idx] || `#${idx + 1}`);
         const statusText = p.timed_out ? 'Timed out' : `#${p.finish_rank} Finished`;
         const tr = document.createElement('tr');
         tr.className = isMe ? 'my-row' : '';
@@ -790,7 +812,7 @@ function showSummary(playersArray) {
                 samples: mySamples.slice(-1200)
             };
             saveGhostPB(ghostPB);
-            toast(`🏅 New personal best: ${me.wpm} WPM — saved as your ghost!`, 'success', 4500);
+            toast(`New personal best: ${me.wpm} WPM — saved as your ghost!`, 'success', 4500);
         }
     }
 
@@ -986,7 +1008,7 @@ async function shareResultCard(me, players) {
 btns.host.addEventListener('click', async () => {
     const name = getPlayerName();
     btns.host.disabled  = true;
-    btns.host.innerText = 'Creating...';
+    setBtnLabel(btns.host, 'Creating...');
     try {
         const data = await apiFetch('/rooms/create', 'POST', { player_name: name });
         myPlayerId = data.player_id;
@@ -1001,15 +1023,15 @@ btns.host.addEventListener('click', async () => {
         toast(`Room ${myRoomCode} created — share your invite link!`, 'success');
     } catch (err) {
         toast('Failed to create room: ' + err.message, 'error');
-        btns.host.disabled  = false;
-        btns.host.innerText = 'Host Game';
+        btns.host.disabled = false;
+        setBtnLabel(btns.host, 'Host Game');
     }
 });
 
 async function doJoin(code) {
     const name = getPlayerName();
     btns.join.disabled  = true;
-    btns.join.innerText = 'Joining...';
+    setBtnLabel(btns.join, 'Joining...');
     try {
         const data = await apiFetch('/rooms/join', 'POST', { room_code: code, player_name: name });
         myPlayerId = data.player_id;
@@ -1024,8 +1046,8 @@ async function doJoin(code) {
         toast(`Joined room ${code}!`, 'success');
     } catch (err) {
         toast('Could not join room: ' + err.message, 'error');
-        btns.join.disabled  = false;
-        btns.join.innerText = 'Join';
+        btns.join.disabled = false;
+        setBtnLabel(btns.join, 'Join');
     }
 }
 
@@ -1065,12 +1087,18 @@ btns.spectate.addEventListener('click', async () => {
     }
 });
 
+let copyFeedbackTimer = null;
 btns.copy.addEventListener('click', async () => {
     const code = els.displayRoom.innerText;
     if (await copyText(code)) {
         toast(`Room code ${code} copied!`, 'success', 2000);
-        btns.copy.innerText = '✅';
-        setTimeout(() => btns.copy.innerText = '📋', 2000);
+        btns.copy.innerHTML = icon(IC.check);
+        btns.copy.classList.add('copied');
+        clearTimeout(copyFeedbackTimer);
+        copyFeedbackTimer = setTimeout(() => {
+            btns.copy.innerHTML = icon(IC.copy);
+            btns.copy.classList.remove('copied');
+        }, 2000);
     } else {
         toast('Copy failed — code: ' + code, 'error');
     }
@@ -1080,7 +1108,7 @@ btns.invite.addEventListener('click', async () => {
     if (!myRoomCode) return;
     const link = `${location.origin}${location.pathname}?room=${myRoomCode}`;
     if (await copyText(link)) {
-        toast('🔗 Invite link copied — send it to friends!', 'success');
+        toast('Invite link copied — send it to friends!', 'success');
     } else {
         toast('Copy failed — link: ' + link, 'error', 6000);
     }

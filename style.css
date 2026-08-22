@@ -222,6 +222,10 @@ input:focus, textarea:focus {
     cursor: pointer;
     transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
 }
 .primary-btn {
     background: linear-gradient(135deg, #f5c400, #ff8c00);
@@ -241,8 +245,60 @@ input:focus, textarea:focus {
 .icon-btn {
     background: none; border: none; cursor: pointer;
     font-size: 1.3rem; filter: grayscale(1); transition: 0.2s;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: var(--text-muted);
 }
-.icon-btn:hover { filter: grayscale(0); transform: scale(1.15); }
+.icon-btn:hover { filter: none; transform: scale(1.15); color: var(--primary); }
+.icon-btn.copied { color: var(--success); filter: none; }
+
+/* ── SVG Icon System ──────────────────────────────────────────────────────── */
+.icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.timer .icon {
+    width: 15px;
+    height: 15px;
+    filter: drop-shadow(0 0 6px rgba(245, 196, 0, 0.5));
+}
+.timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.icon-badge {
+    width: 13px !important;
+    height: 13px !important;
+    vertical-align: -2px;
+    display: inline-block;
+}
+.racer-wpm { display: inline-flex; align-items: center; gap: 4px; }
+.icon-title {
+    width: 40px !important;
+    height: 40px !important;
+    vertical-align: -8px;
+}
+.summary-title { display: inline-flex; align-items: center; gap: 12px; }
+.spectate-banner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+}
+.section-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+}
+.section-title .icon { color: var(--secondary); }
+.bot-remove .icon { width: 11px; height: 11px; stroke-width: 2.5; }
 
 /* ── Lobby Screen ─────────────────────────────────────────────────────────── */
 .lobby-panel { text-align: center; display: flex; flex-direction: column; gap: 28px; }
@@ -666,7 +722,8 @@ input:focus, textarea:focus {
 .toast.success { border-left-color: var(--success); }
 .toast.error   { border-left-color: var(--error); }
 .toast.leaving { animation: toastOut 0.25s ease forwards; }
-.toast-icon    { flex-shrink: 0; line-height: 1.4; }
+.toast-icon    { flex-shrink: 0; line-height: 1.4; display: inline-flex; }
+.toast-icon .icon { width: 17px; height: 17px; margin-top: 1px; }
 .toast-msg     { word-break: break-word; }
 
 @keyframes toastIn {
