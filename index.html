@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#111108">
     <title>NeonType Race - Multiplayer Typing Game</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- Background Orbs -->
+    <!-- Background Orbs --->
     <div class="bg-orb orb-1"></div>
     <div class="bg-orb orb-2"></div>
     <div class="bg-orb orb-3"></div>
@@ -45,6 +46,7 @@
                             <input type="text" id="input-room-code" placeholder="ABCD" maxlength="4" autocomplete="off">
                             <button id="btn-join" class="btn secondary-btn">Join</button>
                         </div>
+                        <button id="btn-spectate" class="btn ghost-btn">👀 Spectate a Live Race</button>
                     </div>
                 </div>
             </div>
@@ -68,12 +70,15 @@
 
                 <div class="lobby-actions">
                     <button id="btn-start-race" class="btn primary-btn hidden">🏁 Start Race</button>
+                    <button id="btn-add-bot" class="btn secondary-btn hidden">🤖 Add Bot</button>
+                    <button id="btn-invite" class="btn secondary-btn">🔗 Copy Invite Link</button>
                 </div>
             </div>
         </div>
 
         <!-- ── Race Screen ── -->
         <div id="screen-race" class="screen">
+            <div id="spectate-banner" class="spectate-banner hidden">👀 SPECTATOR MODE — watching this race live</div>
             <div class="race-header glass-panel">
                 <div class="race-top-bar">
                     <span class="race-label">Live Race</span>
@@ -125,6 +130,19 @@
                     </table>
                 </div>
 
+                <div id="heatmap-section" class="heatmap-section hidden">
+                    <h3 class="section-title">🔥 Performance Heat Map</h3>
+                    <div id="hm-tabs" class="hm-tabs"></div>
+                    <div id="hm-box" class="hm-box text-display"></div>
+                    <div class="hm-legend">
+                        <span><i class="lg lg-fast"></i>Fast</span>
+                        <span><i class="lg lg-norm"></i>Average</span>
+                        <span><i class="lg lg-slow"></i>Slow</span>
+                        <span><i class="lg lg-vslow"></i>Very slow</span>
+                        <span><i class="lg lg-err"></i>Mistyped</span>
+                    </div>
+                </div>
+
                 <div class="summary-race-stats">
                     <div class="race-stat-pill">
                         <span class="rsp-label">Words</span>
@@ -145,6 +163,7 @@
                 </div>
 
                 <div class="summary-actions">
+                    <button id="btn-share" class="btn primary-btn">📤 Share Result</button>
                     <button id="btn-play-again" class="btn primary-btn hidden">🔄 Play Again</button>
                     <button id="btn-quit" class="btn secondary-btn">🏠 Back to Home</button>
                 </div>
@@ -153,6 +172,8 @@
         </div>
 
     </div>
+
+    <div id="toast-container" class="toast-container" aria-live="polite"></div>
 
     <script src="app.js"></script>
 </body>

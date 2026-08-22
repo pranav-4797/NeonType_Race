@@ -14,7 +14,7 @@ from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPExce
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-# ── Logging (must be defined before anything uses it) ────────────────────────
+# ── Logging (mut be defined before anything uses it) ────────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -51,6 +51,11 @@ TEXTS = [
 PLAYER_COLORS = ['#f5c400', '#ff6a00', '#00eeff', '#00ff88']
 PLAYER_EMOJIS = ['🏎️', '🚙', '🚕', '🚗']
 
+# ── Bot configuration ─────────────────────────────────────────────────────────
+BOT_NAMES        = ['Turbo Bot', 'Nitro Bot', 'Vector Bot']
+BOT_SKILL_RANGE  = (38, 82)      # WPM range for bots
+BOT_TICK_SECONDS = 0.5           # how often bots broadcast progress
+
 # ── In-Memory State ───────────────────────────────────────────────────────────
 active_rooms:  Dict[str, dict] = {}
 connections:   Dict[str, Dict[str, WebSocket]] = {}
@@ -77,6 +82,7 @@ def create_player(slot: int, name: str, player_id: str) -> dict:
         'finish_rank': 0,
         'timed_out':   False,
         'finish_time': None,
+        'is_bot':      False,
     }
 
 async def broadcast(room_code: str, message: dict, exclude: Optional[str] = None):
@@ -95,6 +101,100 @@ async def broadcast(room_code: str, message: dict, exclude: Optional[str] = None
 
 async def broadcast_all(room_code: str, message: dict):
     await broadcast(room_code, message, exclude=None)
+
+
+def normalize_heatmap(data: dict, room: dict) -> dict:
+    """Sanitize a client-supplied per-character timing/error profile."""
+    text_len = len(room.get('text') or '')
+
+    def _clean(key: str) -> list:
+        raw = data.get(key)
+        if not isinstance(raw, list):
+            return []
+        cleaned = []
+        for v in raw[:text_len]:
+            if v is None:
+                cleaned.append(None)
+                continue
+            try:
+                cleaned.append(max(0, int(v)))
+            except (TypeError, ValueError):
+                cleaned.append(None)
+        return cleaned
+
+    return {'char_times': _clean('char_times'), 'errors': _clean('errors')}
+
+
+async def run_bot(room_code: str, bot_id: str, text: str, time_limit: int):
+    """Simulate a bot typist racing in real time alongside humans."""
+    room = active_rooms.get(room_code)
+    bot = room['players'].get(bot_id) if room else None
+    if not bot:
+        return
+
+    words    = len(text.strip().split())
+    skill    = bot.get('skill_wpm', 50)
+    duration = max(8.0, (words / skill) * 60.0)
+    started  = datetime.now(timezone.utc)
+    reached  = 0.0
+    step     = BOT_TICK_SECONDS
+
+    try:
+        while True:
+            await asyncio.sleep(step)
+            room = active_rooms.get(room_code)
+            if not room or room['status'] != 'racing':
+                return
+            bot = room['players'].get(bot_id)
+            if not bot or bot['finished']:
+                return
+
+            elapsed = (datetime.now(timezone.utc) - started).total_seconds()
+            frac    = min(1.0, elapsed / duration)
+            prog    = max(reached, min(100.0, (frac ** 0.95) * 100 + random.uniform(-1.0, 1.0)))
+            reached = prog
+            chars   = int(len(text) * prog / 100)
+            live_wpm = int((chars / 5) / (elapsed / 60)) if elapsed > 2 else 0
+
+            if frac >= 1.0:
+                room['finished_count'] += 1
+                bot.update({
+                    'finished': True, 'finish_rank': room['finished_count'],
+                    'wpm': skill, 'accuracy': random.randint(93, 99),
+                    'progress': 100.0,
+                    'finish_time': datetime.now(timezone.utc).isoformat(),
+                })
+                await broadcast_all(room_code, {
+                    'type': 'player_finished', 'player_id': bot_id,
+                    'slot_index': bot['slot_index'], 'finish_rank': bot['finish_rank'],
+                    'wpm': bot['wpm'], 'accuracy': bot['accuracy'],
+                })
+                await check_race_end(room_code)
+                return
+
+            if elapsed >= time_limit:
+                room['finished_count'] += 1
+                bot.update({
+                    'finished': True, 'timed_out': True,
+                    'finish_rank': room['finished_count'], 'wpm': live_wpm,
+                })
+                await broadcast_all(room_code, {
+                    'type': 'player_timeout', 'player_id': bot_id,
+                    'slot_index': bot['slot_index'], 'wpm': bot['wpm'],
+                })
+                await check_race_end(room_code)
+                return
+
+            bot['wpm']      = min(live_wpm, int(skill * 1.35))
+            bot['progress'] = round(prog, 1)
+            bot['accuracy'] = random.randint(94, 100)
+            await broadcast(room_code, {
+                'type': 'player_progress', 'player_id': bot_id,
+                'slot_index': bot['slot_index'], 'wpm': bot['wpm'],
+                'progress': bot['progress'], 'accuracy': bot['accuracy'],
+            })
+    except asyncio.CancelledError:
+        raise
 
 # ── Models ────────────────────────────────────────────────────────────────────
 class RoomCreate(BaseModel):
@@ -150,7 +250,8 @@ async def join_room(data: RoomJoin):
         raise HTTPException(status_code=400, detail="Room is full (max 4 players).")
 
     player_id  = str(uuid.uuid4())
-    slot_index = len(room['players'])
+    used_slots = {p['slot_index'] for p in room['players'].values()}
+    slot_index = next(i for i in range(MAX_PLAYERS) if i not in used_slots)
     player     = create_player(slot_index, data.player_name, player_id)
 
     room['players'][player_id] = player
@@ -183,12 +284,45 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
 
     room = active_rooms[room_code]
 
-    if player_id not in room['players']:
+    is_spectator = player_id.startswith('spectator:')
+    if not is_spectator and player_id not in room['players']:
         await websocket.close(code=1008, reason="Player not in room")
         return
 
     await websocket.accept()
     connections.setdefault(room_code, {})[player_id] = websocket
+
+    # ── Spectator connection: read-only and invisible to players ──────────────
+    if is_spectator:
+        snapshot = {
+            'type':        'spectate_snapshot',
+            'status':      room['status'],
+            'players':     list(room['players'].values()),
+            'text':        room['text'] or '',
+            'time_limit':  room['time_limit'],
+            'word_count':  len((room['text'] or '').split()),
+            'char_count':  len(room['text'] or ''),
+            'elapsed':     0.0,
+        }
+        if room['status'] == 'racing' and room['start_time']:
+            started = datetime.fromisoformat(room['start_time'])
+            snapshot['elapsed'] = (datetime.now(timezone.utc) - started).total_seconds()
+
+        await websocket.send_json(snapshot)
+        logger.info(f"Spectator {player_id} watching room {room_code}")
+
+        try:
+            while True:
+                # Spectators are read-only; ignore anything they send
+                await websocket.receive_text()
+        except WebSocketDisconnect:
+            pass
+        except Exception as e:
+            logger.error(f"Spectator WS error: {e}")
+        finally:
+            connections.get(room_code, {}).pop(player_id, None)
+        return
+
     logger.info(f"WS connected: player {player_id} in room {room_code}")
 
     # Send current room snapshot
@@ -224,8 +358,43 @@ async def handle_message(room_code: str, player_id: str, data: dict):
 
     msg_type = data.get('type')
 
+    # ── add_bot ─────────────────────────────────────────────────────────────
+    if msg_type == 'add_bot':
+        ws = connections.get(room_code, {}).get(player_id)
+        if player_id != room['host_id'] or room['status'] != 'lobby':
+            return
+        if len(room['players']) >= MAX_PLAYERS:
+            if ws:
+                await ws.send_json({'type': 'error', 'msg': 'Room is full — no space for another bot.'})
+            return
+        used_slots = {p['slot_index'] for p in room['players'].values()}
+        slot = next(i for i in range(MAX_PLAYERS) if i not in used_slots)
+        bot_id = f"bot-{uuid.uuid4()}"
+        bot = create_player(slot, random.choice(BOT_NAMES), bot_id)
+        bot['is_bot']    = True
+        bot['emoji']     = '🤖'
+        bot['skill_wpm'] = random.randint(*BOT_SKILL_RANGE)
+        room['players'][bot_id] = bot
+        logger.info(f"Bot '{bot['name']}' ({bot['skill_wpm']} wpm) added to {room_code}")
+        await broadcast_all(room_code, {'type': 'player_joined', 'player': bot})
+
+    # ── remove_bot ──────────────────────────────────────────────────────────
+    elif msg_type == 'remove_bot':
+        if player_id != room['host_id'] or room['status'] != 'lobby':
+            return
+        target_id = data.get('player_id', '')
+        target = room['players'].get(target_id)
+        if target and target['is_bot']:
+            room['players'].pop(target_id, None)
+            logger.info(f"Bot removed from {room_code}")
+            await broadcast_all(room_code, {
+                'type':       'player_left',
+                'player_id':  target_id,
+                'slot_index': target['slot_index'],
+            })
+
     # ── start_race ──────────────────────────────────────────────────────────
-    if msg_type == 'start_race':
+    elif msg_type == 'start_race':
         if player_id != room['host_id']:
             return
         if len(room['players']) < 2:
@@ -260,6 +429,15 @@ async def handle_message(room_code: str, player_id: str, data: dict):
             'players':    list(room['players'].values()),
         })
 
+        # Launch bot typists (cancel any stale tasks from a previous race first)
+        for task in (room.pop('bot_tasks', None) or []):
+            task.cancel()
+        bot_ids = [pid for pid, p in room['players'].items() if p['is_bot']]
+        room['bot_tasks'] = [
+            asyncio.create_task(run_bot(room_code, bid, text, time_limit))
+            for bid in bot_ids
+        ]
+
     # ── typing_progress ─────────────────────────────────────────────────────
     elif msg_type == 'typing_progress':
         player = room['players'].get(player_id)
@@ -293,6 +471,7 @@ async def handle_message(room_code: str, player_id: str, data: dict):
             'progress':    100,
             'finish_time': datetime.now(timezone.utc).isoformat(),
         })
+        player['heatmap'] = normalize_heatmap(data, room)
 
         await broadcast_all(room_code, {
             'type':        'player_finished',
@@ -317,6 +496,7 @@ async def handle_message(room_code: str, player_id: str, data: dict):
             'finish_rank': room['finished_count'],
             'wpm':         int(data.get('wpm', 0)),
         })
+        player['heatmap'] = normalize_heatmap(data, room)
 
         await broadcast_all(room_code, {
             'type':       'player_timeout',
@@ -362,6 +542,9 @@ async def handle_disconnect(room_code: str, player_id: str):
 
     # If host left or room is empty, tear it down
     if player_id == room['host_id'] or len(room['players']) == 0:
+        # Stop any running bot simulations
+        for task in (room.pop('bot_tasks', None) or []):
+            task.cancel()
         for ws in list(connections.get(room_code, {}).values()):
             try:
                 await ws.close(code=1001, reason="Host left / room closed")
