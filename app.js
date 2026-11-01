@@ -204,7 +204,7 @@ function saveGhostPB(pb) {
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 async function apiFetch(path, method = 'GET', body = null) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include' };
     if (body) opts.body = JSON.stringify(body);
     const url = API_BASE + path;
     let res;
@@ -1007,10 +1007,12 @@ async function shareResultCard(me, players) {
 // ─── Button Handlers ──────────────────────────────────────────────────────────
 btns.host.addEventListener('click', async () => {
     const name = getPlayerName();
+    const diffEl = document.getElementById('difficulty-select');
+    const difficulty = diffEl ? diffEl.value : 'medium';
     btns.host.disabled  = true;
     setBtnLabel(btns.host, 'Creating...');
     try {
-        const data = await apiFetch('/rooms/create', 'POST', { player_name: name });
+        const data = await apiFetch('/rooms/create', 'POST', { player_name: name, difficulty });
         myPlayerId = data.player_id;
         myRoomCode = data.room_code;
         isHost     = true;
@@ -1118,7 +1120,11 @@ btns.addBot.addEventListener('click', () => {
     wsSend({ type: 'add_bot' });
 });
 
-btns.start.addEventListener('click', () => wsSend({ type: 'start_race' }));
+btns.start.addEventListener('click', () => {
+    const diffEl = document.getElementById('difficulty-select');
+    const difficulty = diffEl ? diffEl.value : 'medium';
+    wsSend({ type: 'start_race', difficulty });
+});
 
 btns.playAgain.addEventListener('click', () => {
     if (isHost) {
@@ -1211,3 +1217,20 @@ function resetGame() {
     clearUrlParam();
     showScreen('home');
 }
+
+
+// ─── Initialize Preferences from Signed Cookie / Cache ────────────────────────
+(async function initPreferences() {
+    try {
+        const diffEl = document.getElementById('difficulty-select');
+        const prefs = await apiFetch('/player-prefs');
+        if (prefs) {
+            if (prefs.name && (!els.playerNameInput.value || els.playerNameInput.value === 'Anonymous')) {
+                els.playerNameInput.value = prefs.name;
+            }
+            if (prefs.difficulty && diffEl) {
+                diffEl.value = prefs.difficulty;
+            }
+        }
+    } catch (_) {}
+})();

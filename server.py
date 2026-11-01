@@ -10,7 +10,11 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import Optional, Dict
 
-from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Response, Request
+from fastapi.responses import JSONResponse
+from settings import SECRET_KEY
+from cookie_utils import set_player_cookie, read_player_cookie
+from cache import init_cache
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -23,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI()
+init_cache(app)
 api_router = APIRouter(prefix="/api")
 
 app.add_middleware(
@@ -32,6 +37,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Cache-Control Middleware ──────────────────────────────────────────────────
+@app.middleware("http")
+async def add_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.endswith(('.css', '.js', '.jpg', '.png', '.svg', '.ico')):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response
 
 # ── Game Constants ────────────────────────────────────────────────────────────
 MAX_PLAYERS = 4
@@ -47,6 +60,65 @@ TEXTS = [
     "Mountains teach humility in a way that nothing else can. They are indifferent to schedules, to ambitions, to the urgency that drives human beings through their daily lives.",
     "The archive was three floors underground, temperature-controlled to preserve paper older than any living institution. Every box held a fragment of a world that had believed itself permanent.",
 ]
+
+TEXTS_BY_LEVEL = {
+    "easy": [
+        "The sun rises over a quiet town. Birds sing in the trees and flowers bloom in the garden. It is a beautiful morning.",
+        "A cat naps on a warm windowsill. The sunlight falls on its soft fur. Outside the window leaves dance in the breeze.",
+        "She walked to the store and bought some bread. The air was cool and fresh. She smiled at the people she passed on the way.",
+        "The dog ran across the park chasing a red ball. Children laughed and played on the swings nearby. It was a perfect day.",
+        "He opened the book and began to read. The story was about a brave knight who saved a kingdom from a dragon.",
+        "Rain fell softly on the roof. Inside the house it was warm and cozy. A cup of tea sat steaming on the table.",
+        "The beach was quiet in the early morning. Waves rolled gently onto the sand. Seagulls flew overhead calling to each other.",
+        "She planted flowers in her garden every spring. The roses were her favorite. They bloomed in shades of red pink and white.",
+        "The old man sat on the bench watching the world go by. He remembered the days when he was young and full of energy.",
+        "Music filled the room as she played the piano. The melody was soft and sweet. Everyone in the house stopped to listen.",
+        "The train arrived at the station on time. People hurried to find their seats. The journey would take about two hours.",
+        "Stars filled the night sky like tiny diamonds. The moon was full and bright. It was a perfect night for stargazing.",
+        "The children built a sandcastle on the beach. They used buckets and shovels to shape the towers and walls.",
+        "He cooked dinner for his family every evening. Tonight he made pasta with tomato sauce. Everyone said it was delicious.",
+        "The library was a quiet place full of books. She spent hours there reading stories about faraway lands and great adventures.",
+    ],
+    "medium": [
+        "The city never sleeps. Beneath the flickering neon canopy, vendors hawk steaming bowls of ramen while drones weave between skyscrapers like silver fish through a glass sea.",
+        "Rain has a way of erasing the boundaries between things. Puddles reflect neon signs in shattered fragments, making the wet street look like a mosaic of broken light.",
+        "Typing is a skill that rewards patience above all else. The fingers that move fastest are rarely the ones that started fastest — they are the ones that built their speed slowly.",
+        "Mountains teach humility in a way that nothing else can. They are indifferent to schedules, to ambitions, to the urgency that drives human beings through their daily lives.",
+        "The archive was three floors underground, temperature-controlled to preserve paper older than any living institution. Every box held a fragment of a world that had believed itself permanent.",
+        "Coffee shops have become the modern writer's studio. The hum of conversation, the clatter of cups, and the smell of fresh espresso create a rhythm that many find essential for creative work.",
+        "The ocean is a world unto itself, filled with creatures that have never seen sunlight. In the deepest trenches, life thrives in conditions that would destroy most surface organisms.",
+        "Photography is the art of capturing a moment that will never return. The best photographers do not simply point and shoot — they wait, observe, and anticipate the perfect instant.",
+        "The market was alive with color and noise. Vendors called out prices while customers squeezed fruit and haggled over fish. Somewhere a radio played a song everyone seemed to know.",
+        "Software development is an exercise in controlled complexity. Every line of code adds possibility and risk in equal measure. The best engineers write less, not more.",
+        "Autumn transforms the landscape into a canvas of warm colors. Leaves turn from green to gold, orange, and crimson before falling to the ground in a quiet farewell to summer.",
+        "The telescope revealed galaxies that had been invisible to the naked eye. Each point of light was a sun, possibly orbited by worlds where life might have taken hold.",
+        "Chess is a game of infinite possibility played on a board of sixty-four squares. Every move opens new paths while closing others, demanding both vision and discipline from the player.",
+        "The old lighthouse stood alone on the rocky coast, its beam sweeping across the dark water. For over a century it had guided ships safely through the treacherous strait.",
+        "Language shapes the way we think about the world. People who speak different languages often perceive time, space, and color in subtly different ways that reveal the power of words.",
+    ],
+    "hard": [
+        "Space is not empty. Between the visible stars, threads of gas and magnetic fields connect everything in a vast invisible web. Galaxies pull on each other across distances too great to comprehend.",
+        "Networks are not built from cables alone. They are built from trust — the quiet agreement between machines that the data passing between them is worth protecting, routing, and delivering intact.",
+        "Quantum mechanics reveals a universe fundamentally different from the one we experience at human scale. Particles exist in superpositions of states, collapsing into definite outcomes only when measured by an observer.",
+        "The blockchain is essentially a distributed ledger that records transactions across thousands of computers simultaneously. Its cryptographic foundations ensure that once data is written, altering it retroactively becomes computationally infeasible.",
+        "Neuroplasticity demonstrates that the human brain is not a fixed organ but a dynamic, constantly reorganizing network. Every experience, every thought, every repetition physically reshapes the neural pathways within our skulls.",
+        "The Turing test, proposed in 1950, asks whether a machine can exhibit intelligent behavior indistinguishable from that of a human. Decades later, the philosophical implications of this question remain deeply contested among researchers.",
+        "Compilers perform a remarkable transformation: they convert human-readable source code into sequences of binary instructions that a processor can execute at billions of operations per second without any understanding of meaning.",
+        "The theory of general relativity describes gravity not as a force but as a curvature of spacetime caused by mass and energy. Objects follow the straightest possible paths through this curved geometry.",
+        "Cryptographic hash functions are designed to be one-way transformations: given an input, computing the hash is trivial, but reversing the process to recover the original data is computationally intractable by design.",
+        "Distributed systems face the CAP theorem, which states that a networked data store cannot simultaneously guarantee consistency, availability, and partition tolerance — at most two of these three properties can be achieved.",
+        "The double-slit experiment demonstrates wave-particle duality: when individual photons are fired at two narrow slits, they produce an interference pattern on the detector, as if each photon passes through both slits simultaneously.",
+        "Machine learning algorithms identify patterns in data by optimizing mathematical functions over millions of parameters. The resulting models can generalize to new inputs, but their internal reasoning often remains opaque to human interpretation.",
+        "Evolutionary algorithms simulate natural selection by maintaining populations of candidate solutions that compete, reproduce, and mutate over successive generations, gradually converging on optimal or near-optimal solutions to complex optimization problems.",
+        "The halting problem, proven undecidable by Alan Turing in 1936, shows that no general algorithm can determine whether an arbitrary program will eventually terminate or run forever — a fundamental limit of computation.",
+        "Functional programming treats computation as the evaluation of mathematical functions, avoiding mutable state and side effects. This paradigm enables powerful abstractions like higher-order functions, monads, and lazy evaluation that simplify concurrent programming.",
+    ],
+}
+
+def get_random_text(level: str = "medium") -> str:
+    """Pick a random paragraph from the specified difficulty pool."""
+    pool = TEXTS_BY_LEVEL.get(level.lower().strip() if level else "medium", TEXTS_BY_LEVEL["medium"])
+    return random.choice(pool)
 
 PLAYER_COLORS = ['#f5c400', '#ff6a00', '#00eeff', '#00ff88']
 PLAYER_EMOJIS = ['🏎️', '🚙', '🚕', '🚗']
@@ -199,14 +271,26 @@ async def run_bot(room_code: str, bot_id: str, text: str, time_limit: int):
 # ── Models ────────────────────────────────────────────────────────────────────
 class RoomCreate(BaseModel):
     player_name: str = "Anonymous"
+    difficulty:  Optional[str] = "medium"
 
 class RoomJoin(BaseModel):
     room_code:   str
     player_name: str = "Anonymous"
 
 # ── REST Endpoints ────────────────────────────────────────────────────────────
+@api_router.get("/text")
+async def get_text(level: str = "medium"):
+    """Return a random typing paragraph for the given difficulty level."""
+    return {"text": get_random_text(level), "level": level}
+
+@api_router.get("/player-prefs")
+async def get_player_prefs(request: Request):
+    """Read saved player preferences from signed cookie."""
+    name, difficulty = read_player_cookie(request)
+    return {"name": name, "difficulty": difficulty or "medium"}
+
 @api_router.post("/rooms/create")
-async def create_room(data: RoomCreate):
+async def create_room(data: RoomCreate, response: Response):
     # Generate a unique room code
     room_code = generate_room_code()
     attempts = 0
@@ -222,6 +306,7 @@ async def create_room(data: RoomCreate):
         'host_id':        player_id,
         'players':        {player_id: host},
         'status':         'lobby',
+        'difficulty':     data.difficulty or 'medium',
         'text':           None,
         'time_limit':     0,
         'start_time':     None,
@@ -231,11 +316,13 @@ async def create_room(data: RoomCreate):
     connections[room_code] = {}
 
     logger.info(f"Room {room_code} created by {data.player_name}")
-    return {'room_code': room_code, 'player_id': player_id, 'player': host}
+    resp = JSONResponse({'room_code': room_code, 'player_id': player_id, 'player': host, 'difficulty': data.difficulty or 'medium'})
+    set_player_cookie(resp, data.player_name or "", data.difficulty or "medium")
+    return resp
 
 
 @api_router.post("/rooms/join")
-async def join_room(data: RoomJoin):
+async def join_room(data: RoomJoin, response: Response):
     code = data.room_code.upper().strip()
 
     if code not in active_rooms:
@@ -257,12 +344,14 @@ async def join_room(data: RoomJoin):
     room['players'][player_id] = player
 
     logger.info(f"Player {data.player_name} joined room {code}")
-    return {
+    resp = JSONResponse({
         'room_code': code,
         'player_id': player_id,
         'player':    player,
         'players':   list(room['players'].values()),
-    }
+    })
+    set_player_cookie(resp, data.player_name or "", room.get('difficulty', 'medium'))
+    return resp
 
 
 @api_router.get("/rooms/{room_code}")
@@ -403,7 +492,8 @@ async def handle_message(room_code: str, player_id: str, data: dict):
                 await ws.send_json({'type': 'error', 'msg': 'Need at least 2 players to start.'})
             return
 
-        text       = random.choice(TEXTS)
+        difficulty = data.get('difficulty') or room.get('difficulty') or 'medium'
+        text       = get_random_text(difficulty)
         time_limit = calc_time_limit(text)
 
         room.update({

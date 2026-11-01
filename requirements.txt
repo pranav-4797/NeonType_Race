@@ -3,3 +3,5 @@ uvicorn[standard]==0.29.0
 pydantic==2.7.1
 python-multipart==0.0.9
 websockets==12.0
+itsdangerous==2.2.0
+fastapi-cache2==0.2.2
