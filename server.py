@@ -513,10 +513,10 @@ async def handle_message(room_code: str, player_id: str, data: dict):
     elif msg_type == 'start_race':
         if player_id != room['host_id']:
             return
-        if len(room['players']) < 2:
+        if len(room['players']) < 1:
             ws = connections.get(room_code, {}).get(player_id)
             if ws:
-                await ws.send_json({'type': 'error', 'msg': 'Need at least 2 players to start.'})
+                await ws.send_json({'type': 'error', 'msg': 'No players in room to start.'})
             return
 
         difficulty = data.get('difficulty') or room.get('difficulty') or 'medium'

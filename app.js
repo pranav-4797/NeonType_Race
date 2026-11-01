@@ -24,6 +24,7 @@ const screens = {
 
 const btns = {
     host:      document.getElementById('btn-host'),
+    solo:      document.getElementById('btn-solo'),
     join:      document.getElementById('btn-join'),
     spectate:  document.getElementById('btn-spectate'),
     copy:      document.getElementById('btn-copy-code'),
@@ -565,12 +566,13 @@ function updateLobbyUI() {
             ? 'Spectating — waiting for the race to start...'
             : `Spectating ${count} players — waiting for host to start...`;
     } else if (isHost) {
-        if (count >= 2) {
-            btns.start.classList.remove('hidden');
-            els.lobbyTitle.innerText = `${count} player${count > 1 ? 's' : ''} ready — Start the race!`;
+        btns.start.classList.remove('hidden');
+        if (count === 1) {
+            setBtnLabel(btns.start, 'Start Solo Race');
+            els.lobbyTitle.innerText = 'Solo Mode (No Bots) — Ready to race! (or invite friends / add bots)';
         } else {
-            btns.start.classList.add('hidden');
-            els.lobbyTitle.innerText = 'Waiting for at least one more player... (or add a bot!)';
+            setBtnLabel(btns.start, 'Start Race');
+            els.lobbyTitle.innerText = `${count} player${count > 1 ? 's' : ''} ready — Start the race!`;
         }
     } else {
         els.lobbyTitle.innerText = count < 2
@@ -1018,13 +1020,18 @@ function showSummary(playersArray) {
 
     if (winner) {
         const iWon = winner.id === myPlayerId;
-        summaryTitle.innerHTML = iWon
-            ? `${icon(IC.trophy, 'icon-title')} You Won!`
-            : `${winner.emoji} ${escapeHtml(winner.name)} Wins!`;
-        summaryTitle.style.color = iWon ? 'var(--success)' : winner.color;
-        summarySubtitle.innerText = iWon
-            ? `First place with ${winner.wpm} WPM — Outstanding!`
-            : `${winner.wpm} WPM — Better luck next time!`;
+        const isSolo = sorted.length === 1;
+        summaryTitle.innerHTML = isSolo
+            ? `${icon(IC.check, 'icon-title')} Race Completed!`
+            : (iWon
+                ? `${icon(IC.trophy, 'icon-title')} You Won!`
+                : `${winner.emoji} ${escapeHtml(winner.name)} Wins!`);
+        summaryTitle.style.color = (isSolo || iWon) ? 'var(--success)' : winner.color;
+        summarySubtitle.innerText = isSolo
+            ? `Solo run finished at ${winner.wpm} WPM with ${winner.accuracy || 100}% accuracy!`
+            : (iWon
+                ? `First place with ${winner.wpm} WPM — Outstanding!`
+                : `${winner.wpm} WPM — Better luck next time!`);
     } else {
         summaryTitle.innerHTML = `${icon(IC.alert, 'icon-title')} Time's Up!`;
         summaryTitle.style.color = 'var(--text-muted)';
@@ -1269,6 +1276,32 @@ async function shareResultCard(me, players) {
 }
 
 // ─── Button Handlers ──────────────────────────────────────────────────────────
+if (btns.solo) {
+    btns.solo.addEventListener('click', async () => {
+        const name = getPlayerName();
+        const diff = document.getElementById('difficulty-select')?.value || 'medium';
+        setBtnLabel(btns.solo, 'Loading...');
+        btns.solo.disabled = true;
+        try {
+            const data = await apiFetch('/rooms/create', 'POST', { player_name: name, difficulty: diff });
+            myPlayerId = data.player_id;
+            myRoomCode = data.room_code;
+            isHost     = true;
+            els.displayRoom.innerText = myRoomCode;
+            setUrlParam(myRoomCode);
+            showScreen('lobby');
+            updateLobbyUI();
+            connectWS(myRoomCode, myPlayerId);
+            toast('Solo mode ready — click Start Solo Race!', 'success');
+        } catch (err) {
+            toast(err.message, 'error');
+        } finally {
+            setBtnLabel(btns.solo, 'Solo Practice');
+            btns.solo.disabled = false;
+        }
+    });
+}
+
 btns.host.addEventListener('click', async () => {
     const name = getPlayerName();
     const diffEl = document.getElementById('difficulty-select');

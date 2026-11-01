@@ -157,6 +157,18 @@ body::before {
     padding: 8px 16px;
 }
 
+.host-btn-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 220px;
+}
+
+.host-btn-group .btn {
+    width: 100%;
+}
+
 .host-section h3, .join-section h3 {
     font-size: 1.1rem;
     color: var(--text-main);
