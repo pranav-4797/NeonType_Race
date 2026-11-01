@@ -1070,17 +1070,24 @@ textarea:focus-visible {
 
 /* ── Home Illustration ───────────────────────────────────────────────────────── */
 .home-illustration {
-    width: clamp(120px, 30vw, 220px);
+    width: clamp(160px, 36vw, 280px);
     height: auto;
-    margin: 12px auto 4px;
+    margin: 10px auto 6px;
     display: block;
-    filter: drop-shadow(0 0 20px rgba(245, 196, 0, 0.2));
-    animation: illustFloat 6s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 25px rgba(245, 196, 0, 0.28));
+    animation: illustFloat 5s ease-in-out infinite alternate;
 }
 
 @keyframes illustFloat {
     0%   { transform: translateY(0); }
     100% { transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-illustration, .btn, .glass-panel, .bg-orb {
+        animation: none !important;
+        transition: none !important;
+    }
 }
 
 /* ── SEO Content (visually hidden but crawlable) ─────────────────────────────── */

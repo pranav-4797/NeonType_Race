@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+    <circle cx="50" cy="50" r="42" stroke="#222014" stroke-width="6"/>
+    <path d="M 20 70 A 38 38 0 1 1 80 70" stroke="#f5c400" stroke-width="5" stroke-dasharray="6 3" stroke-linecap="round"/>
+    <path d="M 20 70 A 38 38 0 0 1 50 12" stroke="#00eeff" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="6" fill="#f5c400"/>
+    <line x1="50" y1="50" x2="70" y2="30" stroke="#ff4a4a" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="50" y="80" text-anchor="middle" fill="#00eeff" font-family="monospace" font-size="11" font-weight="bold">WPM</text>
+</svg>
