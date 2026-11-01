@@ -46,8 +46,83 @@ const els = {
     tracksContainer:  document.getElementById('tracks-container'),
     timerDisplay:     document.getElementById('timer-display'),
     spectateBanner:   document.getElementById('spectate-banner'),
-    heatmapSection:   document.getElementById('heatmap-section')
+    heatmapSection:   document.getElementById('heatmap-section'),
+    streakBadge:      document.getElementById('streak-badge'),
+    streakCount:      document.getElementById('streak-count'),
+    btnSoundToggle:   document.getElementById('btn-sound-toggle')
 };
+
+// ─── Sound FX (Web Audio API) ─────────────────────────────────────────────────
+let audioCtx = null;
+let soundEnabled = true;
+try {
+    const savedSound = localStorage.getItem('neontype_sound');
+    if (savedSound !== null) soundEnabled = (savedSound === 'true');
+} catch (_) {}
+
+function getAudioContext() {
+    if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) audioCtx = new AudioContextClass();
+    }
+    if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+    }
+    return audioCtx;
+}
+
+function playKeyClick(isCorrect = true) {
+    if (!soundEnabled) return;
+    try {
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const now = ctx.currentTime;
+
+        if (isCorrect) {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(420 + Math.random() * 80, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.04);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.04);
+        } else {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(70, now + 0.08);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.08);
+        }
+    } catch (_) {}
+}
+
+let currentStreak = 0;
+let bestStreak    = 0;
+
+function updateStreakUI() {
+    if (!els.streakBadge || !els.streakCount) return;
+    if (currentStreak >= 5) {
+        els.streakBadge.classList.remove('hidden');
+        els.streakCount.textContent = currentStreak;
+        if (currentStreak >= 20) {
+            els.streakBadge.classList.add('fire-mode');
+        } else {
+            els.streakBadge.classList.remove('fire-mode');
+        }
+    } else {
+        els.streakBadge.classList.add('hidden');
+    }
+}
 
 // ─── Game State ───────────────────────────────────────────────────────────────
 let ws          = null;
@@ -533,6 +608,8 @@ function startRace(text, timeLimit, playersArray, wordCount, charCount) {
 
     // Reset per-race feature state
     resetHeatmapCapture();
+    currentStreak = 0;
+    updateStreakUI();
     mySamples = [];
     raceStartWall = null;
     hmSelectedId = null;
@@ -707,21 +784,27 @@ els.typingInput.addEventListener('input', () => {
         hmStartPerf = performance.now();
     }
 
-    // ── Heat map capture: what happened at each new position? ──
+    // ── Heat map capture, Streak & Sound FX ──
     if (typed.length > prevTypedLen) {
         const nowPerf = performance.now();
         for (let i = prevTypedLen; i < typed.length; i++) {
-            if (typed[i] === gameData.text[i]) {
+            const isCorrect = (typed[i] === gameData.text[i]);
+            if (isCorrect) {
                 if (hmTimes[i] == null) hmTimes[i] = Math.round(nowPerf - hmStartPerf);
+                currentStreak++;
+                if (currentStreak > bestStreak) bestStreak = currentStreak;
             } else {
                 hmErrors[i] = (hmErrors[i] || 0) + 1;
+                currentStreak = 0;
             }
+            playKeyClick(isCorrect);
         }
     } else if (typed.length < prevTypedLen) {
-        // Backspaced — clear timings beyond the cursor so retypes re-record
+        // Backspaced — clear timings beyond cursor
         for (let i = typed.length; i < hmTimes.length; i++) hmTimes[i] = null;
     }
     prevTypedLen = typed.length;
+    updateStreakUI();
 
     let correctChars = 0;
     for (let i = 0; i < typed.length; i++) {
@@ -757,17 +840,99 @@ els.typingInput.addEventListener('input', () => {
 
 els.typingInput.addEventListener('paste', e => e.preventDefault());
 
-// ─── Render ───────────────────────────────────────────────────────────────────
-function renderText(typedLength, typedText = '') {
-    let html = '';
-    for (let i = 0; i < gameData.text.length; i++) {
-        const raw = gameData.text[i];
-        const ch  = raw === ' ' ? '&nbsp;' : escapeHtml(raw);
-        let cls = i === typedLength ? 'current' : '';
-        if (i < typedLength) cls = typedText[i] === raw ? 'correct' : 'incorrect';
-        html += `<span class="${cls}">${ch}</span>`;
+// ─── Render (Word-Level Zoom & Dynamic Typography) ───────────────────────────
+function getWordRanges(text) {
+    const words = [];
+    const regex = /\S+/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        words.push({
+            start: match.index,
+            end: match.index + match[0].length - 1,
+            text: match[0]
+        });
     }
+    return words;
+}
+
+function renderText(typedLength, typedText = '') {
+    if (!gameData.text) {
+        els.textDisplay.innerHTML = '';
+        return;
+    }
+
+    if (!gameData.wordRanges || gameData.wordRangesText !== gameData.text) {
+        gameData.wordRanges = getWordRanges(gameData.text);
+        gameData.wordRangesText = gameData.text;
+    }
+
+    const words = gameData.wordRanges;
+    let html = '';
+    let lastIdx = 0;
+
+    for (let wIdx = 0; wIdx < words.length; wIdx++) {
+        const w = words[wIdx];
+
+        // Any whitespace before this word (e.g. spaces between words)
+        if (w.start > lastIdx) {
+            for (let s = lastIdx; s < w.start; s++) {
+                let spaceCls = 'space-char';
+                if (s === typedLength) spaceCls += ' current';
+                if (s < typedLength) {
+                    spaceCls += (typedText[s] === ' ' ? ' correct' : ' incorrect space-err');
+                }
+                html += `<span class="${spaceCls}">&nbsp;</span>`;
+            }
+        }
+
+        // Active if cursor is within this word or on its trailing boundary before next word starts
+        const isNextWordStarted = (wIdx + 1 < words.length && typedLength >= words[wIdx + 1].start);
+        const isActive = (typedLength >= w.start && !isNextWordStarted);
+        const isCompleted = (typedLength > w.end);
+
+        let wordCls = 'word';
+        if (isActive) wordCls += ' active-word';
+        else if (isCompleted) wordCls += ' completed-word';
+
+        html += `<span class="${wordCls}">`;
+        for (let i = w.start; i <= w.end; i++) {
+            const raw = gameData.text[i];
+            const ch = escapeHtml(raw);
+            let cls = 'char';
+            if (i === typedLength) cls += ' current';
+            if (i < typedLength) {
+                cls += (typedText[i] === raw ? ' correct' : ' incorrect');
+            }
+            html += `<span class="${cls}">${ch}</span>`;
+        }
+        html += `</span>`;
+
+        lastIdx = w.end + 1;
+    }
+
+    // Trailing characters/spaces after the last word
+    if (lastIdx < gameData.text.length) {
+        for (let s = lastIdx; s < gameData.text.length; s++) {
+            let spaceCls = 'space-char';
+            if (s === typedLength) spaceCls += ' current';
+            if (s < typedLength) {
+                spaceCls += (typedText[s] === ' ' ? ' correct' : ' incorrect space-err');
+            }
+            html += `<span class="${spaceCls}">&nbsp;</span>`;
+        }
+    }
+
     els.textDisplay.innerHTML = html;
+
+    // Smooth auto-scroll to keep active word in view on multiline texts
+    const activeEl = els.textDisplay.querySelector('.active-word');
+    if (activeEl && els.textDisplay.scrollHeight > els.textDisplay.clientHeight) {
+        const wordOffsetTop = activeEl.offsetTop - els.textDisplay.offsetTop;
+        const targetScroll = wordOffsetTop - (els.textDisplay.clientHeight / 2) + 20;
+        if (Math.abs(els.textDisplay.scrollTop - targetScroll) > 35) {
+            els.textDisplay.scrollTo({ top: Math.max(0, targetScroll), behavior: 'smooth' });
+        }
+    }
 }
 
 function renderTracks() {
@@ -783,16 +948,23 @@ function renderTracks() {
             ? ` ${icon(IC.clock, 'icon-badge')}`
             : ` ${icon(IC.flag, 'icon-badge')} #${p.finish_rank}`;
 
+        let speedTier = 'tier-cyan';
+        if (wpm >= 100) speedTier = 'tier-purple';
+        else if (wpm >= 70) speedTier = 'tier-gold';
+        else if (wpm >= 40) speedTier = 'tier-green';
+
+        const hasNitro = isMe && currentStreak >= 20;
+
         const track = document.createElement('div');
         track.className = 'racer-track';
         track.innerHTML = `
             <div class="racer-info">
                 <span class="racer-name" style="color:${p.color}">${p.emoji} ${escapeHtml(p.name)}${isMe ? ' <em>(You)</em>' : ''}</span>
-                <span class="racer-wpm">${wpm} WPM${badge}</span>
+                <span class="racer-wpm ${speedTier}">${wpm} WPM${badge}</span>
             </div>
             <div class="track-bar">
                 <div class="track-fill" style="width:${progress}%; background: linear-gradient(90deg, ${p.color}33, ${p.color})">
-                    <span class="car-emoji">${p.emoji}</span>
+                    <span class="car-emoji ${hasNitro ? 'nitro-active' : ''}">${p.emoji}</span>
                 </div>
             </div>
         `;
@@ -891,6 +1063,8 @@ function showSummary(playersArray) {
     document.getElementById('summary-players').innerText = sorted.length;
     const finishedCount = sorted.filter(p => !p.timed_out).length;
     document.getElementById('summary-finished').innerText = `${finishedCount}/${sorted.length}`;
+    const streakEl = document.getElementById('summary-streak');
+    if (streakEl) streakEl.innerText = `${bestStreak} 🔥`;
 
     // Personal-best ghost: save if this run beats the record
     if (me && !isSpectator && me.finished && !me.timed_out && (me.progress ?? 0) >= 99.5) {
@@ -1279,6 +1453,8 @@ els.typingInput.addEventListener('focus', () => {
 
 // ─── Reset ────────────────────────────────────────────────────────────────────
 function resetGame() {
+    currentStreak = 0;
+    updateStreakUI();
     stopHeartbeat();
     if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
     wsReconnectAttempts = 0;
@@ -1336,4 +1512,18 @@ function resetGame() {
             }
         }
     } catch (_) {}
+})();
+
+// ─── Sound Toggle Button Initialization ─────────────────────────────────────
+(function initSoundToggle() {
+    const btn = document.getElementById('btn-sound-toggle');
+    if (!btn) return;
+    const iconSpan = btn.querySelector('.sound-icon');
+    if (iconSpan) iconSpan.textContent = soundEnabled ? '🔊' : '🔇';
+    btn.addEventListener('click', () => {
+        soundEnabled = !soundEnabled;
+        try { localStorage.setItem('neontype_sound', String(soundEnabled)); } catch (_) {}
+        if (iconSpan) iconSpan.textContent = soundEnabled ? '🔊' : '🔇';
+        toast(soundEnabled ? 'Typing sound effects enabled' : 'Typing sound effects muted', 'info', 1800);
+    });
 })();

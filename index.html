@@ -170,8 +170,20 @@
             <div id="spectate-banner" class="spectate-banner hidden"><svg class="icon"><use href="#i-eye"/></svg><span>SPECTATOR MODE — watching this race live</span></div>
             <div class="race-header glass-panel">
                 <div class="race-top-bar">
-                    <span class="race-label">Live Race</span>
-                    <span id="timer-display" class="timer"></span>
+                    <div class="race-top-left">
+                        <span class="race-label">Live Race</span>
+                        <div id="streak-badge" class="streak-badge hidden">
+                            <span class="streak-fire">🔥</span>
+                            <span id="streak-count" class="streak-count">0</span>
+                            <span class="streak-label">STREAK</span>
+                        </div>
+                    </div>
+                    <div class="race-top-right">
+                        <button id="btn-sound-toggle" class="btn-sound-toggle" title="Toggle typing sound" aria-label="Toggle typing sound">
+                            <span class="sound-icon">🔊</span>
+                        </button>
+                        <span id="timer-display" class="timer"></span>
+                    </div>
                 </div>
                 <div id="tracks-container" class="tracks-container"></div>
             </div>
@@ -248,6 +260,10 @@
                     <div class="race-stat-pill">
                         <span class="rsp-label">Finished</span>
                         <span id="summary-finished" class="rsp-value">—</span>
+                    </div>
+                    <div class="race-stat-pill">
+                        <span class="rsp-label">Best Streak</span>
+                        <span id="summary-streak" class="rsp-value">—</span>
                     </div>
                 </div>
 

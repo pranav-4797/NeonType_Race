@@ -441,12 +441,162 @@ input:focus, textarea:focus {
     user-select: none;
     word-break: break-word;
 }
+/* Upgraded Word-level and Character-level Typography */
 .text-display span { transition: color 0.08s; }
-.text-display span.correct   { color: var(--success); text-shadow: 0 0 8px rgba(0,255,136,0.25); }
-.text-display span.incorrect { color: var(--error); background: rgba(255,74,74,0.12); border-radius: 3px; }
-.text-display span.current   { border-bottom: 2px solid #f5c400; color: var(--text-main); animation: blink 1s step-end infinite; }
+.text-display .word {
+    display: inline-block;
+    padding: 2px 5px;
+    margin: 2px 1px;
+    border-radius: 6px;
+    transition: transform 0.16s cubic-bezier(0.2, 0.8, 0.2, 1),
+                background-color 0.16s ease,
+                box-shadow 0.16s ease,
+                border-color 0.16s ease;
+    border-bottom: 2px solid transparent;
+    vertical-align: baseline;
+    transform-origin: center bottom;
+}
 
-@keyframes blink { 50% { border-color: transparent; } }
+.text-display .word.active-word {
+    transform: scale(1.12);
+    background: rgba(245, 196, 0, 0.12);
+    box-shadow: 0 0 16px rgba(245, 196, 0, 0.22), inset 0 0 8px rgba(245, 196, 0, 0.08);
+    border-bottom: 2px solid #f5c400;
+}
+
+.text-display .word.completed-word {
+    opacity: 0.88;
+}
+
+.text-display .char {
+    display: inline-block;
+    position: relative;
+    transition: color 0.08s ease, text-shadow 0.08s ease;
+}
+
+.text-display .char.correct {
+    color: var(--success);
+    text-shadow: 0 0 8px rgba(0, 255, 136, 0.35);
+}
+
+.text-display .char.incorrect {
+    color: var(--error);
+    background: rgba(255, 74, 74, 0.28);
+    border-radius: 3px;
+    text-shadow: 0 0 8px rgba(255, 74, 74, 0.4);
+    animation: charShake 0.15s ease;
+}
+
+@keyframes charShake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px); }
+    75% { transform: translateX(2px); }
+}
+
+.text-display .char.current {
+    color: #ffffff;
+    border-left: 2px solid #f5c400;
+    margin-left: -1px;
+    box-shadow: -2px 0 8px #f5c400;
+    animation: caretPulse 0.8s infinite alternate ease-in-out;
+}
+
+.text-display .space-char {
+    display: inline-block;
+    position: relative;
+    padding: 0 1px;
+}
+
+.text-display .space-char.current {
+    border-left: 2px solid #f5c400;
+    margin-left: -1px;
+    box-shadow: -2px 0 8px #f5c400;
+    animation: caretPulse 0.8s infinite alternate ease-in-out;
+}
+
+.text-display .space-char.incorrect {
+    background: rgba(255, 74, 74, 0.35);
+    border-radius: 2px;
+}
+
+@keyframes caretPulse {
+    0% { border-left-color: #f5c400; box-shadow: -2px 0 8px #f5c400; }
+    100% { border-left-color: rgba(245, 196, 0, 0.2); box-shadow: none; }
+}
+
+/* Streak Badge & Nitro FX */
+.race-top-left, .race-top-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.streak-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: rgba(245, 196, 0, 0.12);
+    border: 1px solid rgba(245, 196, 0, 0.4);
+    color: #f5c400;
+    box-shadow: 0 0 12px rgba(245, 196, 0, 0.25);
+    transition: all 0.2s ease;
+}
+
+.streak-badge.fire-mode {
+    background: linear-gradient(135deg, rgba(255, 0, 85, 0.3), rgba(255, 170, 0, 0.3));
+    border-color: #ff0055;
+    color: #ffcc00;
+    box-shadow: 0 0 18px rgba(255, 0, 85, 0.6), 0 0 8px rgba(255, 170, 0, 0.4);
+    animation: streakPulse 0.6s infinite alternate ease-in-out;
+}
+
+@keyframes streakPulse {
+    0% { transform: scale(1); }
+    100% { transform: scale(1.06); filter: drop-shadow(0 0 6px #ff0055); }
+}
+
+/* Sound Toggle Button */
+.btn-sound-toggle {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.btn-sound-toggle:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+}
+
+/* Nitro Boost Car Effect */
+.car-emoji.nitro-active {
+    filter: drop-shadow(0 0 10px #ff0055) drop-shadow(0 0 4px #ffaa00);
+    animation: nitroVibe 0.12s infinite alternate;
+}
+
+@keyframes nitroVibe {
+    0% { transform: translate(0, 0) scale(1.15); }
+    100% { transform: translate(1px, -1px) scale(1.22); }
+}
+
+/* Racer WPM speed color tiers */
+.racer-wpm.tier-cyan   { color: #00f0ff; text-shadow: 0 0 8px rgba(0, 240, 255, 0.4); }
+.racer-wpm.tier-green  { color: #00ff88; text-shadow: 0 0 8px rgba(0, 255, 136, 0.5); }
+.racer-wpm.tier-gold   { color: #f5c400; text-shadow: 0 0 10px rgba(245, 196, 0, 0.6); }
+.racer-wpm.tier-purple { color: #ff00ff; text-shadow: 0 0 14px rgba(255, 0, 255, 0.8); font-weight: 800; }
 
 .typing-input {
     width: 100%;
