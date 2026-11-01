@@ -402,14 +402,21 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
 
         try:
             while True:
-                # Spectators are read-only; ignore anything they send
-                await websocket.receive_text()
+                # Spectators are read-only; handle heartbeat if sent
+                raw = await websocket.receive_text()
+                try:
+                    data = json.loads(raw)
+                    if data.get('type') == 'ping':
+                        await websocket.send_json({'type': 'pong'})
+                except Exception:
+                    pass
         except WebSocketDisconnect:
             pass
         except Exception as e:
             logger.error(f"Spectator WS error: {e}")
         finally:
-            connections.get(room_code, {}).pop(player_id, None)
+            if connections.get(room_code, {}).get(player_id) is websocket:
+                connections.get(room_code, {}).pop(player_id, None)
         return
 
     logger.info(f"WS connected: player {player_id} in room {room_code}")
@@ -419,6 +426,7 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
         'type':    'room_state',
         'players': list(room['players'].values()),
         'status':  room['status'],
+        'host_id': room['host_id'],
     })
 
     # Notify others
@@ -430,14 +438,23 @@ async def websocket_endpoint(websocket: WebSocket, room_code: str, player_id: st
     try:
         while True:
             raw  = await websocket.receive_text()
-            data = json.loads(raw)
-            await handle_message(room_code, player_id, data)
+            try:
+                data = json.loads(raw)
+            except Exception as json_err:
+                logger.warning(f"Invalid JSON from {player_id}: {json_err}")
+                continue
+            try:
+                await handle_message(room_code, player_id, data)
+            except Exception as msg_err:
+                logger.error(f"Error handling message from {player_id}: {msg_err}")
     except WebSocketDisconnect:
         pass
     except Exception as e:
         logger.error(f"WS error for {player_id}: {e}")
     finally:
-        await handle_disconnect(room_code, player_id)
+        if connections.get(room_code, {}).get(player_id) is websocket:
+            connections.get(room_code, {}).pop(player_id, None)
+        await handle_disconnect(room_code, player_id, websocket)
 
 
 async def handle_message(room_code: str, player_id: str, data: dict):
@@ -446,6 +463,16 @@ async def handle_message(room_code: str, player_id: str, data: dict):
         return
 
     msg_type = data.get('type')
+
+    # ── ping / heartbeat ────────────────────────────────────────────────────
+    if msg_type == 'ping':
+        ws = connections.get(room_code, {}).get(player_id)
+        if ws:
+            try:
+                await ws.send_json({'type': 'pong'})
+            except Exception:
+                pass
+        return
 
     # ── add_bot ─────────────────────────────────────────────────────────────
     if msg_type == 'add_bot':
@@ -611,8 +638,24 @@ async def check_race_end(room_code: str):
         room['status'] = 'lobby'
 
 
-async def handle_disconnect(room_code: str, player_id: str):
-    connections.get(room_code, {}).pop(player_id, None)
+async def handle_disconnect(room_code: str, player_id: str, websocket: WebSocket = None):
+    # Check if a different (newer) socket connection already replaced this one
+    current_ws = connections.get(room_code, {}).get(player_id)
+    if websocket is not None and current_ws is not None and current_ws is not websocket:
+        return
+
+    room = active_rooms.get(room_code)
+    if not room:
+        return
+
+    # Wait grace period (4 seconds) for transient disconnects or page reloads to reconnect
+    await asyncio.sleep(4)
+
+    # If the player reconnected during the grace period, preserve their session
+    reconnected_ws = connections.get(room_code, {}).get(player_id)
+    if reconnected_ws is not None and (websocket is None or reconnected_ws is not websocket):
+        logger.info(f"Player {player_id} reconnected to room {room_code} within grace period")
+        return
 
     room = active_rooms.get(room_code)
     if not room:
@@ -630,24 +673,32 @@ async def handle_disconnect(room_code: str, player_id: str):
         'slot_index': player['slot_index'],
     })
 
-    # If host left or room is empty, tear it down
-    if player_id == room['host_id'] or len(room['players']) == 0:
+    human_players = [p for p in room['players'].values() if not p.get('is_bot')]
+
+    # If no human players remain, tear down the room
+    if len(human_players) == 0:
         # Stop any running bot simulations
         for task in (room.pop('bot_tasks', None) or []):
             task.cancel()
         for ws in list(connections.get(room_code, {}).values()):
             try:
-                await ws.close(code=1001, reason="Host left / room closed")
+                await ws.close(code=1001, reason="Room closed - all human players left")
             except Exception:
                 pass
         connections.pop(room_code, None)
         active_rooms.pop(room_code, None)
-        logger.info(f"Room {room_code} closed")
+        logger.info(f"Room {room_code} closed (no human players left)")
     else:
-        # If the host left, promote the next player
+        # If the host disconnected, promote the first remaining human player
         if player_id == room['host_id']:
-            new_host = next(iter(room['players']))
-            room['host_id'] = new_host
+            new_host = human_players[0]
+            room['host_id'] = new_host['id']
+            logger.info(f"Host transferred to {new_host['name']} ({new_host['id']}) in room {room_code}")
+            await broadcast_all(room_code, {
+                'type':      'new_host',
+                'host_id':   new_host['id'],
+                'host_name': new_host['name'],
+            })
 
 # ── Include router ────────────────────────────────────────────────────────────
 app.include_router(api_router)

@@ -262,24 +262,88 @@ async function checkBackendHealth() {
 }
 checkBackendHealth();
 
+// ─── WebSocket Heartbeat & Keep-Alive ─────────────────────────────────────────
+let wsHeartbeatTimer = null;
+let wsReconnectTimer = null;
+let wsReconnectAttempts = 0;
+const MAX_WS_RECONNECT_ATTEMPTS = 3;
+
+function startHeartbeat() {
+    stopHeartbeat();
+    wsHeartbeatTimer = setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+        }
+    }, 20000); // Ping every 20s to keep reverse-proxies (Render/Cloudflare) from closing idle sockets
+}
+
+function stopHeartbeat() {
+    if (wsHeartbeatTimer) {
+        clearInterval(wsHeartbeatTimer);
+        wsHeartbeatTimer = null;
+    }
+}
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 function connectWS(roomCode, playerId, spectator = false) {
+    if (wsReconnectTimer) {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = null;
+    }
+
+    if (ws) {
+        ws.onclose = null;
+        ws.onerror = null;
+        try { ws.close(1000); } catch (_) {}
+        ws = null;
+    }
+
     ws = new WebSocket(`${WS_BASE}/ws/${roomCode}/${playerId}`);
 
-    ws.onopen = () => console.log('WS connected', spectator ? '(spectator)' : '');
+    ws.onopen = () => {
+        console.log('WS connected', spectator ? '(spectator)' : '');
+        wsReconnectAttempts = 0;
+        startHeartbeat();
+    };
 
     ws.onmessage = (e) => {
-        try { handleServerMessage(JSON.parse(e.data)); }
-        catch (err) { console.error('WS parse error:', err); }
+        try {
+            const data = JSON.parse(e.data);
+            if (data.type === 'pong') return; // Heartbeat acknowledged
+            handleServerMessage(data);
+        } catch (err) {
+            console.error('WS parse error:', err);
+        }
     };
 
     ws.onclose = (e) => {
-        if (e.code === 1000) return;
+        stopHeartbeat();
+        console.warn(`WS closed: code=${e.code}, reason=${e.reason}`);
+
+        if (e.code === 1000) return; // Clean intentional disconnect
+
         if (e.code === 1008) {
             toast('Room not found or no longer available.', 'error');
             resetGame();
             return;
         }
+
+        // If in active lobby or race, attempt automatic reconnect with backoff
+        const inActiveSession = !!myRoomCode &&
+            (screens.lobby.classList.contains('active') || screens.race.classList.contains('active'));
+
+        if (inActiveSession && wsReconnectAttempts < MAX_WS_RECONNECT_ATTEMPTS) {
+            wsReconnectAttempts++;
+            const backoffMs = wsReconnectAttempts * 1200;
+            toast(`Connection lost. Reconnecting (${wsReconnectAttempts}/${MAX_WS_RECONNECT_ATTEMPTS})...`, 'info', 2000);
+            wsReconnectTimer = setTimeout(() => {
+                if (myRoomCode && myPlayerId) {
+                    connectWS(myRoomCode, myPlayerId, isSpectator);
+                }
+            }, backoffMs);
+            return;
+        }
+
         toast(isSpectator
             ? 'Spectation ended — disconnected from server.'
             : 'Disconnected from server. Returning to home.', 'error');
@@ -287,7 +351,7 @@ function connectWS(roomCode, playerId, spectator = false) {
     };
 
     ws.onerror = () => {
-        toast('Connection error.', 'error');
+        console.warn('WS error');
     };
 }
 
@@ -299,9 +363,32 @@ function wsSend(msg) {
 function handleServerMessage(msg) {
     switch (msg.type) {
 
+        case 'pong':
+            // Heartbeat response from server
+            break;
+
         case 'room_state':
+            if (msg.host_id) {
+                isHost = (msg.host_id === myPlayerId);
+            }
             syncPlayers(msg.players);
-            updateLobbyUI();
+            if (screens.lobby.classList.contains('active')) {
+                updateLobbyUI();
+            } else if (screens.race.classList.contains('active')) {
+                renderTracks();
+            }
+            break;
+
+        case 'new_host':
+            if (msg.host_id === myPlayerId) {
+                isHost = true;
+                toast('The previous host disconnected. You are now the room host!', 'info', 4000);
+            } else {
+                toast(`${msg.host_name || 'A player'} is now the room host.`, 'info', 3000);
+            }
+            if (screens.lobby.classList.contains('active')) {
+                updateLobbyUI();
+            }
             break;
 
         case 'player_joined':
@@ -1192,6 +1279,9 @@ els.typingInput.addEventListener('focus', () => {
 
 // ─── Reset ────────────────────────────────────────────────────────────────────
 function resetGame() {
+    stopHeartbeat();
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    wsReconnectAttempts = 0;
     stopTimers();
     if (ws) { ws.onclose = null; ws.onerror = null; ws.close(1000); ws = null; }
     myPlayerId = null; myRoomCode = null; isHost = false; isSpectator = false;
