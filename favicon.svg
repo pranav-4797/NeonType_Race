@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="100%" height="100%">
+    <defs>
+        <linearGradient id="neonG" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffe566"/>
+            <stop offset="50%" stop-color="#f5c400"/>
+            <stop offset="100%" stop-color="#ff6a00"/>
+        </linearGradient>
+        <linearGradient id="cyanG" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="#0066ff"/>
+            <stop offset="100%" stop-color="#00eeff"/>
+        </linearGradient>
+        <filter id="glow">
+            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+    <!-- Background rounded squircle -->
+    <rect x="2" y="2" width="60" height="60" rx="16" fill="#111108" stroke="url(#neonG)" stroke-width="2.5"/>
+    
+    <!-- Speed streak lines -->
+    <line x1="8" y1="22" x2="26" y2="22" stroke="#00eeff" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+    <line x1="6" y1="32" x2="22" y2="32" stroke="#f5c400" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+    <line x1="10" y1="42" x2="28" y2="42" stroke="#ff6a00" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+    
+    <!-- Neon Lightning / Speed Arrow Accent -->
+    <polygon points="38,10 24,34 35,34 26,54 52,26 40,26" fill="url(#neonG)" filter="url(#glow)"/>
+    
+    <!-- Race Car Profile Silhouette Underneath -->
+    <path d="M 16,48 Q 28,40 44,40 Q 56,42 60,48 L 16,48 Z" fill="url(#cyanG)"/>
+    <circle cx="26" cy="48" r="4" fill="#f5c400"/>
+    <circle cx="48" cy="48" r="4" fill="#f5c400"/>
+</svg>
