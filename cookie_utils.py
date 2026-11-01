@@ -23,7 +23,8 @@ def set_player_cookie(response: Response, name: str, difficulty: str) -> None:
         value=signed,
         max_age=MAX_AGE,
         httponly=True,
-        samesite="Lax",
+        samesite="None",
+        secure=True,
     )
 
 def read_player_cookie(request: Request) -> tuple[str, str]:

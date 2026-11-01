@@ -204,7 +204,10 @@ function saveGhostPB(pb) {
 
 // ─── API ─────────────────────────────────────────────────────────────────────
 async function apiFetch(path, method = 'GET', body = null) {
-    const opts = { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include' };
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+        opts.credentials = 'include';
+    }
     if (body) opts.body = JSON.stringify(body);
     const url = API_BASE + path;
     let res;
@@ -218,7 +221,7 @@ async function apiFetch(path, method = 'GET', body = null) {
                 'Backend not configured. Open app.js and set RENDER_BACKEND_URL to your Render.com URL.'
             );
         }
-        throw new Error(`Cannot reach backend (${url}). Is the Render server running?`);
+        throw new Error(`Cannot reach backend (${url}). If using Render free tier, it may take ~30s to wake up on first request. Please wait a few seconds and try again!`);
     }
     if (!res.ok) {
         let detail = 'Unknown error';
@@ -1009,6 +1012,7 @@ btns.host.addEventListener('click', async () => {
     const name = getPlayerName();
     const diffEl = document.getElementById('difficulty-select');
     const difficulty = diffEl ? diffEl.value : 'medium';
+    try { localStorage.setItem('neontype_diff', difficulty); } catch (_) {}
     btns.host.disabled  = true;
     setBtnLabel(btns.host, 'Creating...');
     try {
@@ -1219,16 +1223,25 @@ function resetGame() {
 }
 
 
-// ─── Initialize Preferences from Signed Cookie / Cache ────────────────────────
+// ─── Initialize Preferences from Storage & Signed Cookie ────────────────────
 (async function initPreferences() {
+    const diffEl = document.getElementById('difficulty-select');
     try {
-        const diffEl = document.getElementById('difficulty-select');
+        const savedDiff = localStorage.getItem('neontype_diff');
+        if (savedDiff && diffEl) diffEl.value = savedDiff;
+        const savedName = localStorage.getItem(NAME_KEY);
+        if (savedName && (!els.playerNameInput.value || els.playerNameInput.value === 'Anonymous')) {
+            els.playerNameInput.value = savedName;
+        }
+    } catch (_) {}
+
+    try {
         const prefs = await apiFetch('/player-prefs');
         if (prefs) {
             if (prefs.name && (!els.playerNameInput.value || els.playerNameInput.value === 'Anonymous')) {
                 els.playerNameInput.value = prefs.name;
             }
-            if (prefs.difficulty && diffEl) {
+            if (prefs.difficulty && diffEl && !localStorage.getItem('neontype_diff')) {
                 diffEl.value = prefs.difficulty;
             }
         }
